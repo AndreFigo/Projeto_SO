@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <errno.h>
 #include <semaphore.h>
 
 #define NINPUTS 9
@@ -28,15 +29,15 @@
 #define MAXLOADMSG 200
 #define PIPE_NAME "my_pipe"
 
-#define Corrida 0
-#define Seguranca 1
-#define Box 2
-#define Desistencia 3
-#define Terminado 4
+#define CORRIDA 0
+#define SEGURANCA 1
+#define BOX 2
+#define DESISTENCIA 3
+#define TERMINADO 4
 
-#define Livre 0
-#define Ocupado 1
-#define Reservado 2
+#define LIVRE 0
+#define OCUPADO 1
+#define RESERVADO 2
 
 #define LOGFILE "log.txt"
 #define DEBUG 1
@@ -110,12 +111,13 @@ typedef struct
 typedef struct
 {
     time_t time;
-    int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max, total_cars, cars_finished;
+
+    int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
+    int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
     float fuel_tank;
-    pthread_mutex_t finish_mutex;
-    pthread_cond_t all_finished;
-    pthread_mutexattr_t attrmutex;
-    pthread_condattr_t attrcondv;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex;
+    pthread_cond_t all_finished, new_tunit, end_tunit;
+
 } info_struct;
 
 info_struct *data;
@@ -125,6 +127,8 @@ car *cars;
 int shmid;
 int logfile;
 
+pthread_mutexattr_t attrmutex;
+pthread_condattr_t attrcondv;
 sem_t *log_mutex, *start_race;
 struct sigaction print_est, finish_race;
 sigset_t block_set_est, block_set_fin;

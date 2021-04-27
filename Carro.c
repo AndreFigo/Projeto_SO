@@ -19,7 +19,34 @@ void *car_func(void *p)
     //print_car_info(ind, team_num);
 
     sem_wait(start_race);
+    int elapsed = 0;
 
+    while (1)
+    {
+        //inform that you are ready to wait for a tunit to pass
+        pthread_mutex_lock(&data->end_tunit_mutex);
+
+        data->cars_ended_tunit += 1;
+        pthread_cond_signal(&data->end_tunit);
+
+        pthread_mutex_unlock(&data->end_tunit_mutex);
+
+        // wait for a tunit to pass
+        pthread_mutex_lock(&data->new_tunit_mutex);
+        while (elapsed != data->tunits_passed)
+        {
+            pthread_cond_wait(&data->new_tunit, &data->new_tunit_mutex);
+        }
+        elapsed += 1;
+        pthread_mutex_unlock(&data->new_tunit_mutex);
+
+        //update distance
+        //update gas
+        //check box
+        //check status
+        //communicate status changes
+        //read message queue
+    }
 
     //sleep(1);
 

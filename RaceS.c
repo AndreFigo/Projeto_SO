@@ -82,20 +82,24 @@ void init_sem()
     }
 
     /* Initialize attribute of mutex. */
-    pthread_mutexattr_init(&(data->attrmutex));
-    pthread_mutexattr_setpshared(&(data->attrmutex), PTHREAD_PROCESS_SHARED);
+    pthread_mutexattr_init(&(attrmutex));
+    pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED);
 
     /* Initialize attribute of condition variable. */
-    pthread_condattr_init(&(data->attrcondv));
-    pthread_condattr_setpshared(&(data->attrcondv), PTHREAD_PROCESS_SHARED);
+    pthread_condattr_init(&(attrcondv));
+    pthread_condattr_setpshared(&(attrcondv), PTHREAD_PROCESS_SHARED);
 
     /* Initialize mutex. */
-    pthread_mutex_init(&(data->finish_mutex), &(data->attrcondv));
+    pthread_mutex_init(&(data->finish_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->new_tunit_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->end_tunit_mutex), &(attrmutex));
 
     /* Initialize condition variables. */
-    pthread_cond_init(&(data->all_finished), &(data->attrcondv));
+    pthread_cond_init(&(data->all_finished), &(attrcondv));
+    pthread_cond_init(&(data->new_tunit), &(attrcondv));
+    pthread_cond_init(&(data->end_tunit), &(attrcondv));
 
-    //to do
+    //to do BOX SEM, ...
 }
 
 void sigint(int signo)
@@ -104,14 +108,16 @@ void sigint(int signo)
     //finish race
     //wait for everyone using cond variable
 
-    pthread_mutex_lock(&data->finished_mutex);
+    pthread_mutex_lock(&data->finish_mutex);
 
     while (data->cars_finished != data->total_cars)
     {
-        pthread_cond_wait(&data->all_finished, &data->finished_mutex);
+        pthread_cond_wait(&data->all_finished, &data->finish_mutex);
     }
 
-    pthread_mutex_unlock(&data->finished_mutex);
+    pthread_mutex_unlock(&data->finish_mutex);
+
+    //to do
 
     // wait for child processes
     for (int i = 0; i < 2; i++)
@@ -120,7 +126,7 @@ void sigint(int signo)
     terminate();
 }
 
-void sgtstp(int signo)
+void sigtstp(int signo)
 {
 
     //print estatisticas
@@ -168,6 +174,8 @@ void init(float *config)
     data->max_car = max_car;
     data->total_cars = 0;
     data->cars_finished = 0;
+    data->cars_ended_tunit = 0;
+    data->tunits_passed = 0;
 
     free(config);
 
@@ -193,6 +201,12 @@ void init(float *config)
         exit(0);
     }
 
+    init_sem();
+}
+
+void init_signal()
+{
+
     sigemptyset(&print_est.sa_mask);
     print_est.sa_flags = 0;
     print_est.sa_handler = &sigtstp;
@@ -203,8 +217,6 @@ void init(float *config)
 
     sigaction(SIGINT, &print_est, NULL);
     sigaction(SIGTSTP, &finish_race, NULL);
-
-    init_sem();
 }
 
 void terminate()
@@ -253,6 +265,7 @@ void terminate()
 
 int main()
 {
+
     if ((logfile = creat(LOGFILE, S_IRWXU | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP)) == -1)
     {
         perror("Erro a criar o logfile\n");
@@ -263,6 +276,8 @@ int main()
     print_debug_no_sem("Ficheiro de configuracoes lido\n");
 
     init(config);
+
+    log_errors("SIMULATOR STARTING\n");
 
     for (int i = 0; i < 2; ++i)
     {
@@ -281,6 +296,8 @@ int main()
         }
     }
 
+    init_signal();
+
     // sinais
 
     // a mudar
@@ -288,6 +305,8 @@ int main()
         wait(NULL);
 
     print_debug("Terminating everything\n");
+
+    log_errors("SIMULATOR CLOSING\n");
 
     terminate();
 
@@ -343,6 +362,7 @@ float *configurationRead()
     read += read2int(config, 6, fich);
     read += read1f(config, 8, fich);
     char lixo[100];
+
     if (fscanf(fich, "%s", lixo) >= 0)
     {
         fprintf(stderr, "Erro na leitura do ficheiro de configurações.\n");
