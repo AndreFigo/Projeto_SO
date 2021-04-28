@@ -200,18 +200,10 @@ void init(float *config)
         (teams + i)->n_cars = 0;
     }
 
-    unlink(PIPE_NAME);
-
     mqid = msgget(IPC_PRIVATE, IPC_CREAT | 0777);
     if (mqid < 0)
     {
         perror("Creating message queue: ");
-        exit(0);
-    }
-
-    if ((mkfifo(PIPE_NAME, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST))
-    {
-        perror("Cannot create pipe: ");
         exit(0);
     }
 
@@ -223,6 +215,13 @@ void init(float *config)
             perror("ERRO no pipe: ");
             exit(1);
         }
+    }
+    //named pipe creation
+    unlink(PIPE_NAME);
+    if ((mkfifo(PIPE_NAME, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST))
+    {
+        perror("Cannot create pipe: ");
+        exit(0);
     }
 
     init_sem();

@@ -27,10 +27,76 @@ void Race_manager(int n_equipas)
         exit(0);
     }
 
-    fd_set read_set;
-
     read_commands();
+    data->on_going = 1;
     print_debug("Comandos totalmente lidos\n");
+
+    //read from all pipes
+    fd_set read_set;
+    print_debug("Listening from all pipes\n");
+    int nread;
+    char line[MAXTAMLINE];
+    char log_msg[MAXERRORMSG];
+    while (1)
+    {
+        FD_ZERO(&read_set);
+        FD_SET(fd_named_pipe, &read_set);
+        for (int i = 0; i < data->n_teams; ++i)
+            FD_SET((teams + i)->fd[0], &read_set);
+
+        //VERIFICAR SE O FD_NAMED_PIPE É EFETIVAMENTE O MAIOR
+        if (select(fd_named_pipe + 1, &read_set, NULL, NULL, NULL) > 0)
+        {
+
+            if (FD_ISSET(fd_named_pipe, &read_set))
+            {
+                nread = read(fd_named_pipe, line, MAXTAMLINE);
+                line[nread - 1] = 0;
+
+                if (strcmp(line, "START RACE!") == 0)
+                {
+                    if (data->on_going)
+                        sprintf(log_msg, "%s - Rejected, race is on going!\n", line);
+                    else
+                    {
+                        //recomecar a corrida
+                        //------------------------- to do -----------------------------//
+                        sprintf(log_msg, "%s - Restarting race\n", line);
+                    }
+                }
+                else
+                {
+                    // dispose of addcar commands
+                    char original[MAXTAMLINE];
+                    strcpy(original, line);
+                    char *token = strtok(line, " ");
+                    if (strcmp(token, "ADDCAR"))
+                    {
+                        // reject
+                        if (data->on_going)
+                            sprintf(log_msg, "%s - Rejected, race already started!\n", original);
+                        else
+                            sprintf(log_msg, "%s - Rejected, cannot add cars in after interrupt!\n", original);
+                    }
+                    else
+                    {
+                        sprintf(log_msg, "%s - Rejected, wrong command!\n", original);
+                    }
+                }
+
+                log_entries(log_msg);
+            }
+            for (int i = 0; i < data->n_teams; ++i)
+            {
+                if (FD_ISSET((teams + i)->fd[0], &read_set))
+                {
+                    nread = read((teams + i)->fd[0], line, MAXTAMLINE);
+                    log_entries(line);
+                }
+            }
+        }
+    }
+
     //sleep(1);
     for (int i = 0; i < n_equipas; ++i)
         wait(NULL);
@@ -229,12 +295,13 @@ int add_car(char *line)
         log_load_car(original_line);
         return 0;
     }
-    log_wrong_commands("USE \'START RACE!\' OR \'ADDCAR\' ", original_line);
+    log_wrong_commands("USE \'START RACE!\' OR \'ADDCAR ...\' ", original_line);
     return -1;
 }
 
 void log_wrong_commands(char *error_msg, char *command)
 {
+    //sprintf ???
     char error[MAXERRORMSG] = "WRONG COMMAND - ";
     strcat(error, error_msg);
     strcat(error, "!! (");

@@ -24,8 +24,9 @@
 #include <math.h>
 
 #define NINPUTS 9
-#define MAXTAMLINE 200
 #define MAXNOMEEQUIPA 20
+#define MAXTAMLINE 200
+#define MAXLOGMSG 200
 #define MAXERRORMSG 200
 #define MAXLOADMSG 200
 #define MAXWARNINGMSG 200
@@ -37,8 +38,8 @@
 #define TERMINADO 4
 
 #define LIVRE 0
-#define OCUPADO 1
-#define RESERVADO 2
+#define RESERVADO 1
+#define OCUPADO 2
 
 #define PIPE_NAME "my_pipe"
 #define LOGFILE "log.txt"
@@ -124,6 +125,7 @@ typedef struct
 
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
+    int on_going;
     float fuel_tank;
     pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex;
     pthread_cond_t all_finished, new_tunit, end_tunit;

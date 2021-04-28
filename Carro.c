@@ -92,6 +92,12 @@ void *car_func(void *p)
             {
                 //try_wait
             }
+            else if ((cars + ind)->fuel < fuel_4laps)
+            {
+
+                //verificar se esta ou nao reservado ou ocupado
+                //
+            }
         }
 
         //check box

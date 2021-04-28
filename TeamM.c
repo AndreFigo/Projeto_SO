@@ -25,6 +25,8 @@ void Team_manager(int num)
             print_debug("Car ignored\n");
     }
 
+    sem_wait(start_race);
+
     //box
     sem_wait(&((teams + num)->box_access));
     //repair car
@@ -35,17 +37,16 @@ void Team_manager(int num)
     {
         for (int i = 0; i < data->max_car; i++)
         {
-            if ((cars + i)->num != -1 && (cars + i)->ind_team == num && ((cars + i)->distance) % info_struct->distance == 0)
+            if ((cars + i)->num != -1 && (cars + i)->ind_team == num && ((cars + i)->distance) % data->distance == 0)
             {
                 if ((teams + num)->box_state == LIVRE && (cars + i)->state == SEGURANCA)
                 {
                     (teams + num)->box_state == RESERVADO;
-                    (cars + i)->state == SEGURANCA)
+                    (cars + i)->state == SEGURANCA;
                 }
             }
         }
     }
-    sem_wait(start_race);
 
     //sleep(4);
     for (int i = 0; i < (teams + num)->n_cars; ++i)
