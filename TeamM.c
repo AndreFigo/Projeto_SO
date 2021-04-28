@@ -26,9 +26,25 @@ void Team_manager(int num)
     }
 
     //box
-    if ((cars + i)->state)
-        ;
-
+    sem_wait(&((teams + num)->box_access));
+    //repair car
+    //fill tank
+    //update box state and car state
+    sem_post(&((teams + num)->box_access));
+    if ((teams + num)->box_state >= OCUPADO)
+    {
+        for (int i = 0; i < data->max_car; i++)
+        {
+            if ((cars + i)->num != -1 && (cars + i)->ind_team == num && ((cars + i)->distance) % info_struct->distance == 0)
+            {
+                if ((teams + num)->box_state == LIVRE && (cars + i)->state == SEGURANCA)
+                {
+                    (teams + num)->box_state == RESERVADO;
+                    (cars + i)->state == SEGURANCA)
+                }
+            }
+        }
+    }
     sem_wait(start_race);
 
     //sleep(4);
