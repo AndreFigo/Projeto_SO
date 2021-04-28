@@ -72,6 +72,12 @@ void init_sem()
             fprintf(stderr, "Problemas a inicializar o semaforo %d das equipas\n", i);
             exit(1);
         }
+
+        if (sem_init(&((teams + i)->box_access), 1, 1) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d das equipas\n", i);
+            exit(1);
+        }
     }
 
     sem_unlink("START");
@@ -100,6 +106,7 @@ void init_sem()
     pthread_cond_init(&(data->end_tunit), &(attrcondv));
 
     //to do BOX SEM, ...
+    /* Initialize thread mutex. */
 }
 
 void sigint(int signo)
@@ -148,13 +155,13 @@ void init(float *config)
     print_debug_no_sem("Criando a memoria partilhada\n");
     if ((shmid = shmget(IPC_PRIVATE, sizeof(info_struct) + n_teams * sizeof(teams) + max_car * n_teams * sizeof(car), IPC_CREAT | 0777)) < 0)
     {
-        perror("Erro no shmget com IPC_CREAT\n");
+        perror("Erro no shmget com IPC_CREAT: ");
         exit(1);
     }
 
     if ((data = (info_struct *)shmat(shmid, NULL, 0)) == (info_struct *)-1)
     {
-        perror("ERRO no shmat.\n");
+        perror("ERRO no shmat: ");
         exit(1);
     }
 
@@ -195,10 +202,27 @@ void init(float *config)
 
     unlink(PIPE_NAME);
 
+    mqid = msgget(IPC_PRIVATE, IPC_CREAT | 0777);
+    if (mqid < 0)
+    {
+        perror("Creating message queue: ");
+        exit(0);
+    }
+
     if ((mkfifo(PIPE_NAME, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST))
     {
         perror("Cannot create pipe: ");
         exit(0);
+    }
+
+    //unnamed pipes creation
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        if (pipe((teams + i)->fd) == -1)
+        {
+            perror("ERRO no pipe: ");
+            exit(1);
+        }
     }
 
     init_sem();
@@ -277,23 +301,24 @@ int main()
 
     init(config);
 
-    log_errors("SIMULATOR STARTING\n");
+    app_log("SIMULATOR STARTING\n");
 
-    for (int i = 0; i < 2; ++i)
+    if (fork() == 0)
     {
-        if (fork() == 0)
-        {
-            if (i == 0)
-            {
-                Malfunction_manager(data->u_time_malfunc);
-                exit(0);
-            }
-            else
-            {
-                Race_manager(data->n_teams);
-                exit(0);
-            }
-        }
+        Race_manager(data->n_teams);
+        exit(0);
+    }
+
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        close((teams + i)->fd[0]);
+        close((teams + i)->fd[1]);
+    }
+
+    if (fork() == 0)
+    {
+        Malfunction_manager(data->u_time_malfunc);
+        exit(0);
     }
 
     init_signal();
@@ -306,7 +331,7 @@ int main()
 
     print_debug("Terminating everything\n");
 
-    log_errors("SIMULATOR CLOSING\n");
+    app_log("SIMULATOR CLOSING\n");
 
     terminate();
 
@@ -376,7 +401,7 @@ float *configurationRead()
     exit(1);
 }
 
-void log_errors(char *msg)
+void app_log(char *msg)
 {
 
     sem_wait(log_mutex);

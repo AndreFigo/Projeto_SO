@@ -21,13 +21,14 @@
 #include <time.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <math.h>
 
 #define NINPUTS 9
 #define MAXTAMLINE 200
 #define MAXNOMEEQUIPA 20
 #define MAXERRORMSG 200
 #define MAXLOADMSG 200
-#define PIPE_NAME "my_pipe"
+#define MAXWARNINGMSG 200
 
 #define CORRIDA 0
 #define SEGURANCA 1
@@ -39,7 +40,9 @@
 #define OCUPADO 1
 #define RESERVADO 2
 
+#define PIPE_NAME "my_pipe"
 #define LOGFILE "log.txt"
+
 #define DEBUG 1
 
 void Team_manager(int num);
@@ -56,7 +59,7 @@ void init(float *config);
 
 void *car_func(void *p);
 
-void log_errors(char *msg);
+void app_log(char *msg);
 
 int add_car(char *line);
 
@@ -90,6 +93,12 @@ void print_debug_no_sem(char *msg);
 
 typedef struct
 {
+    long mtype;
+    int warning;
+} warning_message;
+
+typedef struct
+{
     int team_num, ind_car;
 } info;
 
@@ -98,14 +107,15 @@ typedef struct
     pthread_t tid;
     //char equipa[MAXNOMEEQUIPA];
     int ind_team, num, speed, state, laps_done, distance, reliability, n_stops;
-    float consumption, gas;
+    float consumption, fuel;
 } car;
 
 typedef struct
 {
-    sem_t car_ready;
-    int box, n_cars;
+    sem_t car_ready, box_access;
+    int box_state, n_cars;
     char name[MAXNOMEEQUIPA];
+    int fd[2];
 } team;
 
 typedef struct
@@ -124,8 +134,8 @@ info_struct *data;
 team *teams;
 car *cars;
 
-int shmid;
-int logfile;
+int shmid, mqid;
+int logfile, fd_named_pipe;
 
 pthread_mutexattr_t attrmutex;
 pthread_condattr_t attrcondv;

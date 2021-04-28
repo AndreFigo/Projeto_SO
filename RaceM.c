@@ -9,14 +9,25 @@ void Race_manager(int n_equipas)
 {
 
     print_debug("race manager!\n");
+
     for (int i = 0; i < n_equipas; ++i)
     {
         if (fork() == 0)
         {
+            close((teams + i)->fd[0]);
             Team_manager(i);
             exit(0);
         }
+        close((teams + i)->fd[1]);
     }
+
+    if ((fd_named_pipe = open(PIPE_NAME, O_RDWR)) < 0)
+    {
+        perror("Cannot open pipe for reading: ");
+        exit(0);
+    }
+
+    fd_set read_set;
 
     read_commands();
     print_debug("Comandos totalmente lidos\n");
@@ -29,26 +40,24 @@ void Race_manager(int n_equipas)
 void read_commands()
 {
     char line_input[MAXTAMLINE] = "";
-
-    FILE *fich = fopen("commands.txt", "r");
+    int nread;
 
     while (1)
     {
-
-        if (fgets(line_input, MAXTAMLINE, fich) == NULL)
-            break;
-        int i = 0;
+        nread = read(fd_named_pipe, line_input, MAXTAMLINE);
+        line_input[nread - 1] = 0;
+        /*int i = 0;
         while (line_input[i] != 0)
         {
             if (line_input[i] == '\n' || line_input[i] == '\r')
                 line_input[i] = 0;
             i++;
-        }
+        }*/
 
         if (strcasecmp(line_input, "START RACE!") == 0)
         {
 
-            log_errors("NEW COMMAND RECEIVED: START RACE\n");
+            app_log("NEW COMMAND RECEIVED: START RACE\n");
             int ver = verify_all_teams();
             if (ver == 1)
             {
@@ -63,7 +72,7 @@ void read_commands()
             }
             else
             {
-                log_errors("CANNOT START, NOT ENOUGH TEAMS\n");
+                app_log("CANNOT START, NOT ENOUGH TEAMS\n");
                 continue;
             }
         }
@@ -231,7 +240,7 @@ void log_wrong_commands(char *error_msg, char *command)
     strcat(error, "!! (");
     strcat(error, command);
     strcat(error, ").\n");
-    log_errors(error);
+    app_log(error);
 }
 
 void log_load_car(char *command)
@@ -239,7 +248,7 @@ void log_load_car(char *command)
     char load[MAXERRORMSG] = "NEW CAR LOADED => ";
     strcat(load, command + 7);
     strcat(load, "\n");
-    log_errors(load);
+    app_log(load);
 }
 
 //return  0 if there are not enough teams and 1 otherwise

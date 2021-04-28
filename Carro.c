@@ -18,8 +18,21 @@ void *car_func(void *p)
 
     //print_car_info(ind, team_num);
 
+    //inicializacao do carro
+
+    (cars + ind)->fuel = data->fuel_tank;
+    (cars + ind)->distance = 0;
+    (cars + ind)->n_stops = 0;
+    (cars + ind)->laps_done = 0;
+    (cars + ind)->state = CORRIDA;
+
+    float fuel_2laps = (float)(ceil((double)data->distance / (cars + ind)->speed) * (cars + ind)->consumption * 2);
+    float fuel_4laps = 2 * fuel_2laps;
+
     sem_wait(start_race);
-    int elapsed = 0;
+    int elapsed = 0, dist_curr = 0, current_speed = (cars + ind)->speed, current_cons = (cars + ind)->consumption;
+    int safe_mode = 0;
+    warning_message warning;
 
     while (1)
     {
@@ -40,8 +53,47 @@ void *car_func(void *p)
         elapsed += 1;
         pthread_mutex_unlock(&data->new_tunit_mutex);
 
+        //check malfunctions
+        if (elapsed % data->u_time_malfunc == 0)
+        {
+            if (msgrcv(mqid, &warning, sizeof(warning_message), IPC_NOWAIT) != -1)
+            {
+                //malfunc
+                if (safe_mode == 0)
+                {
+                    safe_mode = 1;
+
+                    //comunicar com a race manager
+                    //unnamed pipe
+                }
+            }
+            if (errno == ENOMSG)
+            {
+                //all good
+            }
+        }
+
+        //update fuel
+        (cars + ind)->fuel -= current_cons;
+        if ((cars + ind)->fuel < fuel_2laps)
+        {
+            //modo de seguranca
+            safe_mode = 1;
+            //reservar box
+        }
+
         //update distance
-        //update gas
+        (cars + ind)->distance += current_speed;
+        dist_curr += current_speed;
+        if (dist_curr >= data->distance)
+        {
+            dist_curr -= data->distance;
+            if (safe_mode == 1)
+            {
+                //try_wait
+            }
+        }
+
         //check box
         //check status
         //communicate status changes

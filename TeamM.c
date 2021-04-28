@@ -8,7 +8,7 @@
 void Team_manager(int num)
 {
     info ids[data->max_car];
-
+    (teams + num)->box_state = LIVRE;
     char msg[MAXTAMLINE];
     sprintf(msg, "team %d entrou\n", num);
     print_debug(msg);
@@ -16,7 +16,7 @@ void Team_manager(int num)
     for (int i = 0; i < data->max_car; ++i)
     {
         sem_wait(&((teams + num)->car_ready));
-        ids[i].ind_car = i;
+        ids[i].ind_car = num * data->n_teams + i;
         ids[i].team_num = num;
 
         if ((cars + num * data->n_teams + i)->num != -1)
@@ -24,6 +24,10 @@ void Team_manager(int num)
         else
             print_debug("Car ignored\n");
     }
+
+    //box
+    if ((cars + i)->state)
+        ;
 
     sem_wait(start_race);
 
