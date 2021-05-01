@@ -28,10 +28,19 @@ void Team_manager(int num)
     sem_wait(start_race);
 
     //box
-    sem_wait(&((teams + num)->box_access));
     //repair car
     //fill tank
     //update box state and car state
+
+    while (1)
+    {
+        sem_wait(&(teams + num)->entered_box);
+
+        sem_post(&(teams + num)->box_finished);
+    }
+
+    /*
+    sem_wait(&((teams + num)->box_access));
     sem_post(&((teams + num)->box_access));
     if ((teams + num)->box_state >= OCUPADO)
     {
@@ -46,7 +55,7 @@ void Team_manager(int num)
                 }
             }
         }
-    }
+    }*/
 
     //sleep(4);
     for (int i = 0; i < (teams + num)->n_cars; ++i)

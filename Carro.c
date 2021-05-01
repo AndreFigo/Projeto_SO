@@ -22,7 +22,7 @@ void *car_func(void *p)
 
     (cars + ind)->fuel = data->fuel_tank;
     (cars + ind)->distance = 0;
-    (cars + ind)->n_stops = 0;
+    (cars + ind)->malfunc = 0;
     (cars + ind)->laps_done = 0;
     (cars + ind)->state = CORRIDA;
 

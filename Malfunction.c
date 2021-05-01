@@ -50,6 +50,7 @@ void Malfunction_manager(int t_avaria)
                     // send info to cars
                     if (send_damage > (cars + i)->reliability)
                     {
+                        (cars + i)->malfunc = 1;
                         msgsnd(mqid, &message, sizeof(message) - sizeof(long), 0);
 
                         sprintf(warning, "MALFUNCTION DETECTED in car number %d\n", (cars + i)->num);

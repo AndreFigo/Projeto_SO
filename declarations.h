@@ -113,7 +113,7 @@ typedef struct
 {
     pthread_t tid;
     //char equipa[MAXNOMEEQUIPA];
-    int ind_team, num, speed, state, laps_done, distance, reliability, n_stops;
+    int ind_team, num, speed, state, laps_done, distance, reliability, malfunc;
     float consumption, fuel;
     sem_t state_mutex;
 } car;
@@ -132,7 +132,7 @@ typedef struct
 
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
-    int on_going, stop;
+    int on_going, stop, n_stops, n_malfuncs;
     float fuel_tank;
     pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex;
     pthread_cond_t all_finished, new_tunit, end_tunit;

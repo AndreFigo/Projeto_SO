@@ -222,6 +222,8 @@ void init(float *config)
     data->cars_finished = 0;
     data->cars_ended_tunit = 0;
     data->tunits_passed = 0;
+    data->n_malfuncs = 0;
+    data->n_stops = 0;
 
     free(config);
 
