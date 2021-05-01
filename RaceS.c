@@ -65,19 +65,11 @@ void init_sem()
         exit(1);
     }
 
-    for (int i = 0; i < data->n_teams; ++i)
+    sem_unlink("FORCED_STOP");
+    if ((forced_stop = sem_open("FORCED_STOP", O_CREAT | O_EXCL, 0766, 1)) == SEM_FAILED)
     {
-        if (sem_init(&((teams + i)->car_ready), 1, 0) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d das equipas\n", i);
-            exit(1);
-        }
-
-        if (sem_init(&((teams + i)->box_access), 1, 1) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d das equipas\n", i);
-            exit(1);
-        }
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
     }
 
     sem_unlink("START");
@@ -85,6 +77,48 @@ void init_sem()
     {
         perror("ERROR: Failed to create semaphore\n");
         exit(1);
+    }
+
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        if (sem_init(&((teams + i)->car_ready), 1, 0) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d car_ready\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->box_access), 1, 1) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d box_access\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->box_finished), 1, 0) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d box_finished\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->entered_box), 1, 0) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d entered_box\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->mutex_box_state), 1, 1) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_box_state\n", i);
+            exit(1);
+        }
+    }
+
+    for (int i = 0; i < data->n_teams * data->max_car; ++i)
+    {
+        if (sem_init(&((cars + i)->state_mutex), 1, 1) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_state\n", i);
+            exit(1);
+        }
     }
 
     /* Initialize attribute of mutex. */
@@ -113,6 +147,9 @@ void sigint(int signo)
 {
 
     //finish race
+    sem_wait(forced_stop);
+    data->stop = 1;
+    sem_post(forced_stop);
     //wait for everyone using cond variable
 
     pthread_mutex_lock(&data->finish_mutex);
@@ -123,6 +160,8 @@ void sigint(int signo)
     }
 
     pthread_mutex_unlock(&data->finish_mutex);
+
+    data->on_going = 0; //neeeeeeed protection
 
     //to do
 

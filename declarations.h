@@ -92,6 +92,12 @@ void print_debug(char *msg);
 
 void print_debug_no_sem(char *msg);
 
+void enter_safe_mode(int team_num, int ind, int *cur_speed, float *cur_cons);
+
+void reserve_box(int team_num);
+
+void try_enter_box(int team_num, int ind);
+
 typedef struct
 {
     long mtype;
@@ -109,12 +115,13 @@ typedef struct
     //char equipa[MAXNOMEEQUIPA];
     int ind_team, num, speed, state, laps_done, distance, reliability, n_stops;
     float consumption, fuel;
+    sem_t state_mutex;
 } car;
 
 typedef struct
 {
-    sem_t car_ready, box_access;
-    int box_state, n_cars;
+    sem_t car_ready, box_access, entered_box, box_finished, mutex_box_state;
+    int box_state, n_cars, n_cars_seg_mode;
     char name[MAXNOMEEQUIPA];
     int fd[2];
 } team;
@@ -125,7 +132,7 @@ typedef struct
 
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
-    int on_going;
+    int on_going, stop;
     float fuel_tank;
     pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex;
     pthread_cond_t all_finished, new_tunit, end_tunit;
@@ -141,7 +148,7 @@ int logfile, fd_named_pipe;
 
 pthread_mutexattr_t attrmutex;
 pthread_condattr_t attrcondv;
-sem_t *log_mutex, *start_race;
+sem_t *log_mutex, *start_race, *forced_stop;
 struct sigaction print_est, finish_race;
 sigset_t block_set_est, block_set_fin;
 

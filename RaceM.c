@@ -76,7 +76,7 @@ void Race_manager(int n_equipas)
                         if (data->on_going)
                             sprintf(log_msg, "%s - Rejected, race already started!\n", original);
                         else
-                            sprintf(log_msg, "%s - Rejected, cannot add cars in after interrupt!\n", original);
+                            sprintf(log_msg, "%s - Rejected, cannot add cars in after interrupt or sigint!\n", original);
                     }
                     else
                     {
