@@ -301,12 +301,9 @@ int add_car(char *line)
 
 void log_wrong_commands(char *error_msg, char *command)
 {
-    //sprintf ???
-    char error[MAXERRORMSG] = "WRONG COMMAND - ";
-    strcat(error, error_msg);
-    strcat(error, "!! (");
-    strcat(error, command);
-    strcat(error, ").\n");
+
+    char error[MAXERRORMSG];
+    sprintf("WRONG COMMAND - %s!! (%s).\n", error_msg, command);
     app_log(error);
 }
 

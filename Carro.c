@@ -24,6 +24,7 @@ void *car_func(void *p)
     (cars + ind)->distance = 0;
     (cars + ind)->malfunc = 0;
     (cars + ind)->laps_done = 0;
+    (cars + ind)->n_stops = 0;
     (cars + ind)->state = CORRIDA;
 
     float fuel_2laps = (float)(ceil((double)data->distance / (cars + ind)->speed) * (cars + ind)->consumption * 2);
@@ -59,6 +60,7 @@ void *car_func(void *p)
             if (msgrcv(mqid, &warning, sizeof(warning_message), IPC_NOWAIT) != -1)
             {
                 //malfunc
+                (cars + ind)->malfunc = 1;
                 enter_safe_mode(team_num, ind, &current_speed, &current_cons);
             }
             if (errno == ENOMSG)
@@ -71,7 +73,14 @@ void *car_func(void *p)
         (cars + ind)->fuel -= current_cons;
 
         if ((cars + ind)->fuel < 0)
+        {
             (cars + ind)->state == DESISTENCIA;
+            pthread_cond_broadcast(&data->all_finished);
+            // comunicate
+            communicate_status_changes(team_num, ind, SEGURANCA, DESISTENCIA);
+
+            break;
+        }
 
         if ((cars + ind)->fuel < fuel_2laps)
             enter_safe_mode(team_num, ind, &current_speed, &current_cons);
@@ -86,8 +95,9 @@ void *car_func(void *p)
             if ((cars + ind)->laps_done == data->n_laps || data->stop == 1)
             {
                 sem_post(forced_stop);
-
+                int last = (cars + ind)->state;
                 (cars + ind)->state == TERMINADO;
+                communicate_status_changes(team_num, ind, last, TERMINADO);
                 pthread_mutex_lock(&data->finish_mutex);
                 data->cars_finished += 1;
                 pthread_cond_broadcast(&data->all_finished);
@@ -101,8 +111,12 @@ void *car_func(void *p)
 
             if ((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state < OCUPADO || (cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state == LIVRE)
             {
+                int last = CORRIDA;
+                if ((cars + ind)->state == SEGURANCA)
+                    last = SEGURANCA;
                 sem_post(&(teams + team_num)->mutex_box_state);
-                try_enter_box(team_num, ind);
+
+                enter_box(team_num, ind, last);
             }
             else
                 sem_post(&(teams + team_num)->mutex_box_state);
@@ -138,12 +152,14 @@ void enter_safe_mode(int team_num, int ind, int *cur_speed, float *cur_cons)
         reserve_box(team_num);
 
         //comunicar com a race manager
+        communicate_status_changes(team_num, ind, CORRIDA, SEGURANCA);
         //unnamed pipe
     }
 }
 
 void reserve_box(int team_num)
 {
+    //lock
     sem_wait(&(teams + team_num)->mutex_box_state);
 
     (teams + team_num)->n_cars_seg_mode += 1; //check
@@ -153,19 +169,43 @@ void reserve_box(int team_num)
     sem_wait(&(teams + team_num)->mutex_box_state);
 }
 
-void try_enter_box(int team_num, int ind)
+void enter_box(int team_num, int ind, int last)
 {
     //check if it is
-    if ((sem_trywait(&(teams + team_num)->box_access)) == 0)
-    {
-        (cars + ind)->state == BOX;
-        sem_post(&(teams + team_num)->entered_box);
+    (cars + ind)->state == BOX;
+    (teams + team_num)->ind_catual = ind;
 
-        // wait for the box to do its job
-        sem_wait(&(teams + team_num)->box_finished);
+    sem_wait(&(teams + team_num)->mutex_box_state);
+    (teams + team_num)->box_state = OCUPADO;
+    sem_(&(teams + team_num)->mutex_box_state);
 
-        //car can leave
-        (cars + ind)->state == CORRIDA;
-        sem_post(&(teams + team_num)->box_access);
-    }
+    //communicate status change
+    communicate_status_changes(team_num, ind, last, BOX);
+
+    sem_post(&(teams + team_num)->entered_box);
+
+    pthread_mutex_lock(&(cars + ind)->n_stops_mutex);
+
+    (cars + ind)->n_stops += 1;
+
+    pthread_mutex_unlock(&(cars + ind)->n_stops_mutex);
+
+    // wait for the box to do its job
+    sem_wait(&(teams + team_num)->box_finished);
+    (cars + ind)->malfunc = 0;
+
+    //car can leave
+    (cars + ind)->state == CORRIDA;
+    communicate_status_changes(team_num, ind, BOX, CORRIDA);
+    //communicate status change
+}
+
+void communicate_status_changes(int team, int ind, int last, int current)
+{
+    char estados[5][20] = {"CORRIDA", "SEGURANCA", "BOX", "DESISTENCIA", "TERMINADO"};
+
+    char msg[100];
+    sprintf("Carro %d passou do modo %s para o modo %s\n", (cars + ind)->num, estados[last], estados[current]);
+
+    write((teams + team)->fd[1], msg, strlen(msg));
 }

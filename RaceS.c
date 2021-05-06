@@ -79,6 +79,20 @@ void init_sem()
         exit(1);
     }
 
+    sem_unlink("BEG_COPY");
+    if ((begin_copy = sem_open("BEG_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
+    sem_unlink("END_COPY");
+    if ((ended_copy = sem_open("END_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
     for (int i = 0; i < data->n_teams; ++i)
     {
         if (sem_init(&((teams + i)->car_ready), 1, 0) != 0)
@@ -133,6 +147,7 @@ void init_sem()
     pthread_mutex_init(&(data->finish_mutex), &(attrmutex));
     pthread_mutex_init(&(data->new_tunit_mutex), &(attrmutex));
     pthread_mutex_init(&(data->end_tunit_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->stats_mutex), &(attrmutex));
 
     /* Initialize condition variables. */
     pthread_cond_init(&(data->all_finished), &(attrcondv));
@@ -176,11 +191,119 @@ void sigtstp(int signo)
 {
 
     //print estatisticas
+    car *copy = (car *)malloc(sizeof(car) * data->max_car * data->n_teams);
+
+    sem_wait(begin_copy);
+
+    memcpy(copy, cars, sizeof(car) * data->max_car * data->n_teams);
+    int n_malf = data->n_malfuncs;
+
+    sem_post(ended_copy);
+
+    int seen[5];
+    for (int j = 0; j < 5; j++)
+        seen[j] = -1;
+    int ind;
+
+    char tabela[MAXTABELA] = "\nESTATISTICAS\n";
+    char separator[] = "----------------------------------------\n";
+    char stats[MAXTAMLINE];
+
+    for (int j = 0; j < 5; j++)
+    {
+        ind = max_distance(copy, data->max_car * data->n_teams, seen, 5);
+
+        if (ind > -1)
+        {
+            // escrever os dados da equipa ind
+            sprintf(stats, "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+            strcat(tabela, stats);
+        }
+        else
+        {
+            print_debug("Ha menos de 5 equipas, logo o top 5 esta incompleto\n");
+            break;
+        }
+    }
+
+    // escrever o pior
+    ind = last_place(copy, data->max_car * data->n_teams);
+    sprintf(stats, "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+    strcat(tabela, separator);
+    strcat(tabela, stats);
+
+    //escrevr os stops
+    int n_stops, on_track;
+    on_track_and_total_stops(&n_stops, &on_track, copy, data->max_car * data->n_teams);
+    sprintf(stats, "Total de paragens: %d\nTotal de avarias: %d\nEm pista: %d\n", n_stops, n_malf, on_track);
+    strcat(tabela, separator);
+    strcat(tabela, stats);
+
+    app_log(tabela);
+
+    free(copy);
+
     //top 5
     //last place
     // total avarias
     //total abastecimentos
     // numero de carros em pista
+}
+
+void on_track_and_total_stops(int *n_stops, int *on_track, car *copy, int len)
+{
+    for (int i = 0; i < len; ++i)
+    {
+        if ((copy + i)->num != -1)
+        {
+            if ((copy + i)->state == CORRIDA || (copy + i)->state == SEGURANCA)
+                (*n_stops)++;
+
+            (*on_track) += (copy + i)->n_stops;
+        }
+    }
+}
+
+int last_place(car *copy, int len)
+{
+
+    int min = data->distance * (data->n_laps + 1);
+    int ind_min = -1;
+    for (int i = 0; i < len; i++)
+    {
+        if ((copy + i)->distance < min)
+        {
+            min = (copy + i)->distance;
+            ind_min = i;
+        }
+    }
+    return ind_min;
+}
+
+int max_distance(car *copy, int len, int *seen, int len2)
+{
+    int max = -1, used, ind_max = -1;
+
+    for (int i = 0; i < len; i++)
+    {
+        used = 0;
+        for (int j = 0; j < len2; j++)
+        {
+            if (seen[j] == i)
+            {
+                used = 1;
+                break;
+            }
+            if (seen[j] == -1)
+                break;
+        }
+        if (!used && (copy + i)->distance > max)
+        {
+            max = (copy + i)->distance;
+            ind_max = i;
+        }
+    }
+    return ind_max;
 }
 
 void init(float *config)
@@ -223,7 +346,7 @@ void init(float *config)
     data->cars_ended_tunit = 0;
     data->tunits_passed = 0;
     data->n_malfuncs = 0;
-    data->n_stops = 0;
+    data->stats = 0;
 
     free(config);
 
@@ -245,7 +368,7 @@ void init(float *config)
     if (mqid < 0)
     {
         perror("Creating message queue: ");
-        exit(0);
+        exit(1);
     }
 
     //unnamed pipes creation
@@ -262,7 +385,7 @@ void init(float *config)
     if ((mkfifo(PIPE_NAME, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST))
     {
         perror("Cannot create pipe: ");
-        exit(0);
+        exit(1);
     }
 
     init_sem();
@@ -299,6 +422,20 @@ void terminate()
     }
     sem_unlink("START");
 
+    if (sem_close(begin_copy) == -1)
+    {
+        perror("ERROR: Failed to close semaphore");
+        exit(1);
+    }
+    sem_unlink("BEG_COPY");
+
+    if (sem_close(ended_copy) == -1)
+    {
+        perror("ERROR: Failed to close semaphore");
+        exit(1);
+    }
+    sem_unlink("END_COPY");
+
     for (int i = 0; i < data->n_teams; ++i)
     {
         if (sem_destroy(&((teams + i)->car_ready)) == -1)
@@ -314,6 +451,7 @@ void terminate()
         exit(1);
     }
     //unlink(LOGFILE);
+    //^this deletes the files
 
     if (shmdt(data) == -1)
     {

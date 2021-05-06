@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <semaphore.h>
 #include <math.h>
+#include <signal.h>
 
 #define NINPUTS 9
 #define MAXNOMEEQUIPA 20
@@ -30,6 +31,7 @@
 #define MAXERRORMSG 200
 #define MAXLOADMSG 200
 #define MAXWARNINGMSG 200
+#define MAXTABELA 2000
 
 #define CORRIDA 0
 #define SEGURANCA 1
@@ -96,7 +98,7 @@ void enter_safe_mode(int team_num, int ind, int *cur_speed, float *cur_cons);
 
 void reserve_box(int team_num);
 
-void try_enter_box(int team_num, int ind);
+void enter_box(int team_num, int ind, int last);
 
 typedef struct
 {
@@ -113,15 +115,16 @@ typedef struct
 {
     pthread_t tid;
     //char equipa[MAXNOMEEQUIPA];
-    int ind_team, num, speed, state, laps_done, distance, reliability, malfunc;
+    int ind_team, num, speed, state, laps_done, distance, reliability, malfunc, n_stops, seconds_taken, last_state;
     float consumption, fuel;
     sem_t state_mutex;
+    pthread_mutex_t n_stops_mutex;
 } car;
 
 typedef struct
 {
     sem_t car_ready, box_access, entered_box, box_finished, mutex_box_state;
-    int box_state, n_cars, n_cars_seg_mode;
+    int box_state, n_cars, n_cars_seg_mode, ind_catual;
     char name[MAXNOMEEQUIPA];
     int fd[2];
 } team;
@@ -132,9 +135,9 @@ typedef struct
 
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
-    int on_going, stop, n_stops, n_malfuncs;
+    int on_going, stop, n_malfuncs, stats, on_track;
     float fuel_tank;
-    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex;
     pthread_cond_t all_finished, new_tunit, end_tunit;
 
 } info_struct;
@@ -148,7 +151,8 @@ int logfile, fd_named_pipe;
 
 pthread_mutexattr_t attrmutex;
 pthread_condattr_t attrcondv;
-sem_t *log_mutex, *start_race, *forced_stop;
+//mudar forced_stop
+sem_t *log_mutex, *start_race, *forced_stop, *begin_copy, *ended_copy;
 struct sigaction print_est, finish_race;
 sigset_t block_set_est, block_set_fin;
 

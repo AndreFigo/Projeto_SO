@@ -35,27 +35,17 @@ void Team_manager(int num)
     while (1)
     {
         sem_wait(&(teams + num)->entered_box);
-
+        /* T_Box_min -  T_Box_max*/
+        if (((cars + ((teams + num)->ind_catual))->last_state) == SEGURANCA)
+        {
+            (cars +)->fuel = data->fuel_tank;
+        }
+        else
+        {
+            (cars + ((teams + num)->ind_catual))->fuel = data->fuel_tank;
+        }
         sem_post(&(teams + num)->box_finished);
     }
-
-    /*
-    sem_wait(&((teams + num)->box_access));
-    sem_post(&((teams + num)->box_access));
-    if ((teams + num)->box_state >= OCUPADO)
-    {
-        for (int i = 0; i < data->max_car; i++)
-        {
-            if ((cars + i)->num != -1 && (cars + i)->ind_team == num && ((cars + i)->distance) % data->distance == 0)
-            {
-                if ((teams + num)->box_state == LIVRE && (cars + i)->state == SEGURANCA)
-                {
-                    (teams + num)->box_state == RESERVADO;
-                    (cars + i)->state == SEGURANCA;
-                }
-            }
-        }
-    }*/
 
     //sleep(4);
     for (int i = 0; i < (teams + num)->n_cars; ++i)

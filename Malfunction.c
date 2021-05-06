@@ -28,6 +28,16 @@ void Malfunction_manager(int t_avaria)
         //sleep in microseconds
         usleep(1000000 / data->u_time);
 
+        // se houver sinal de estatisticas, esperamos que se faca uma copia
+        pthread_mutex_lock(&data->stats_mutex);
+        if (data->stats == 1)
+        {
+            sem_post(begin_copy);
+            sem_wait(ended_copy);
+            data->stats = 0;
+        }
+        pthread_mutex_unlock(&data->stats_mutex);
+
         //maybe use a sem instead
         pthread_mutex_lock(&data->new_tunit_mutex);
         data->tunits_passed += 1;
@@ -52,7 +62,7 @@ void Malfunction_manager(int t_avaria)
                     {
                         (cars + i)->malfunc = 1;
                         msgsnd(mqid, &message, sizeof(message) - sizeof(long), 0);
-
+                        data->n_malfuncs++;
                         sprintf(warning, "MALFUNCTION DETECTED in car number %d\n", (cars + i)->num);
                         app_log(warning);
                     }
