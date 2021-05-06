@@ -34,11 +34,13 @@ void Team_manager(int num)
 
     while (1)
     {
+        int time_box = 2, t_max = data->T_Box_Max, t_min = data->T_Box_min;
         sem_wait(&(teams + num)->entered_box);
         /* T_Box_min -  T_Box_max*/
-        if (((cars + ((teams + num)->ind_catual))->last_state) == SEGURANCA)
+        if (((cars + ((teams + num)->ind_catual))->malfunc) == 1)
         {
-            (cars +)->fuel = data->fuel_tank;
+            ((cars + ((teams + num)->ind_catual))->malfunc) == 0;
+            time_box = time_box + t_min + rand() % (t_max - t_min + 1);
         }
         else
         {
