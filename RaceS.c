@@ -257,9 +257,9 @@ void on_track_and_total_stops(int *n_stops, int *on_track, car *copy, int len)
         if ((copy + i)->num != -1)
         {
             if ((copy + i)->state == CORRIDA || (copy + i)->state == SEGURANCA)
-                (*n_stops)++;
+                (*on_track)++;
 
-            (*on_track) += (copy + i)->n_stops;
+            (*n_stops) += (copy + i)->n_stops;
         }
     }
 }
@@ -391,6 +391,20 @@ void init(float *config)
     init_sem();
 }
 
+void ignore_signals()
+{
+    sigemptyset(&print_est.sa_mask);
+    print_est.sa_flags = 0;
+    print_est.sa_handler = SIG_IGN;
+
+    sigemptyset(&finish_race.sa_mask);
+    finish_race.sa_flags = 0;
+    finish_race.sa_handler = SIG_IGN;
+
+    sigaction(SIGINT, &print_est, NULL);
+    sigaction(SIGTSTP, &finish_race, NULL);
+}
+
 void init_signal()
 {
 
@@ -468,6 +482,8 @@ void terminate()
 int main()
 {
 
+    ignore_signals();
+
     if ((logfile = creat(LOGFILE, S_IRWXU | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP)) == -1)
     {
         perror("Erro a criar o logfile\n");
@@ -499,11 +515,22 @@ int main()
         exit(0);
     }
 
+    sem_wait(start_race);
     init_signal();
 
     // sinais
 
-    // a mudar
+    pthread_mutex_lock(&data->finish_mutex);
+
+    while (data->cars_finished != data->total_cars)
+    {
+        pthread_cond_wait(&data->all_finished, &data->finish_mutex);
+    }
+
+    pthread_mutex_unlock(&data->finish_mutex);
+
+    data->on_going = 0; //neeeeeeed protection
+
     for (int i = 0; i < 2; ++i)
         wait(NULL);
 

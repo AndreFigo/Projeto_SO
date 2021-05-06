@@ -71,10 +71,6 @@ void Malfunction_manager(int t_avaria)
             }
         }
         pthread_mutex_unlock(&data->new_tunit_mutex);
-
-        //to do
-
-        //sleep(3);
-
-        print_debug("Saiu malfunction manager\n");
     }
+    print_debug("Saiu malfunction manager\n");
+}

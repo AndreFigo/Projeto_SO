@@ -23,11 +23,15 @@
 #include <semaphore.h>
 #include <math.h>
 #include <signal.h>
+#include <sys/msg.h>
+
+/* ========================================= DEFINES ========================================= */
 
 #define NINPUTS 9
 #define MAXNOMEEQUIPA 20
+#define MAXTAMCOMMANDS 1000
 #define MAXTAMLINE 200
-#define MAXLOGMSG 200
+#define MAXLOGMSG 400
 #define MAXERRORMSG 200
 #define MAXLOADMSG 200
 #define MAXWARNINGMSG 200
@@ -47,6 +51,53 @@
 #define LOGFILE "log.txt"
 
 #define DEBUG 1
+
+/* ======================================== ESTRUTURAS ======================================== */
+
+typedef struct
+{
+    long mtype;
+    int warning;
+} warning_message;
+
+typedef struct
+{
+    int team_num, ind_car;
+} info;
+
+typedef struct
+{
+    pthread_t tid;
+    //char equipa[MAXNOMEEQUIPA];
+    int ind_team, num, speed, state, laps_done, distance, reliability, malfunc;
+    int n_stops, seconds_taken, last_state, box_time;
+    float consumption, fuel;
+    sem_t state_mutex;
+    pthread_mutex_t n_stops_mutex;
+} car;
+
+typedef struct
+{
+    sem_t car_ready, box_access, entered_box, box_finished, mutex_box_state;
+    int box_state, n_cars, n_cars_seg_mode, ind_catual;
+    char name[MAXNOMEEQUIPA];
+    int fd[2];
+} team;
+
+typedef struct
+{
+    time_t time;
+
+    int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
+    int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
+    int on_going, stop, n_malfuncs, stats, on_track;
+    float fuel_tank;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex;
+    pthread_cond_t all_finished, new_tunit, end_tunit;
+
+} info_struct;
+
+/*======================================== FUNÇÕES ======================================== */
 
 void Team_manager(int num);
 
@@ -74,6 +125,10 @@ void read_commands();
 
 void init_sem();
 
+void ignore_signals();
+
+void init_signal();
+
 void print_car_info(int ind, int team_num);
 
 void log_wrong_commands(char *error_msg, char *command);
@@ -100,47 +155,15 @@ void reserve_box(int team_num);
 
 void enter_box(int team_num, int ind, int last);
 
-typedef struct
-{
-    long mtype;
-    int warning;
-} warning_message;
+int max_distance(car *copy, int len, int *seen, int len2);
 
-typedef struct
-{
-    int team_num, ind_car;
-} info;
+int last_place(car *copy, int len);
 
-typedef struct
-{
-    pthread_t tid;
-    //char equipa[MAXNOMEEQUIPA];
-    int ind_team, num, speed, state, laps_done, distance, reliability, malfunc, n_stops, seconds_taken, last_state;
-    float consumption, fuel;
-    sem_t state_mutex;
-    pthread_mutex_t n_stops_mutex;
-} car;
+void on_track_and_total_stops(int *n_stops, int *on_track, car *copy, int len);
 
-typedef struct
-{
-    sem_t car_ready, box_access, entered_box, box_finished, mutex_box_state;
-    int box_state, n_cars, n_cars_seg_mode, ind_catual;
-    char name[MAXNOMEEQUIPA];
-    int fd[2];
-} team;
+void communicate_status_changes(int team, int ind, int last, int current);
 
-typedef struct
-{
-    time_t time;
-
-    int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
-    int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
-    int on_going, stop, n_malfuncs, stats, on_track;
-    float fuel_tank;
-    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex;
-    pthread_cond_t all_finished, new_tunit, end_tunit;
-
-} info_struct;
+/* ================================= VARIAVEIS GLOBAIS ================================= */
 
 info_struct *data;
 team *teams;

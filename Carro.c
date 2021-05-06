@@ -57,7 +57,7 @@ void *car_func(void *p)
         //check malfunctions
         if (elapsed % data->u_time_malfunc == 0)
         {
-            if (msgrcv(mqid, &warning, sizeof(warning_message), IPC_NOWAIT) != -1)
+            if (msgrcv(mqid, &warning, sizeof(warning_message) - sizeof(long), ind, IPC_NOWAIT) != -1)
             {
                 //malfunc
                 (cars + ind)->malfunc = 1;
@@ -109,7 +109,7 @@ void *car_func(void *p)
 
             sem_wait(&(teams + team_num)->mutex_box_state);
 
-            if ((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state < OCUPADO || (cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state == LIVRE)
+            if (((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state < OCUPADO) || ((cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state == LIVRE))
             {
                 int last = CORRIDA;
                 if ((cars + ind)->state == SEGURANCA)
@@ -117,6 +117,7 @@ void *car_func(void *p)
                 sem_post(&(teams + team_num)->mutex_box_state);
 
                 enter_box(team_num, ind, last);
+                elapsed += (cars + ind)->box_time;
             }
             else
                 sem_post(&(teams + team_num)->mutex_box_state);
@@ -177,7 +178,7 @@ void enter_box(int team_num, int ind, int last)
 
     sem_wait(&(teams + team_num)->mutex_box_state);
     (teams + team_num)->box_state = OCUPADO;
-    sem_(&(teams + team_num)->mutex_box_state);
+    sem_post(&(teams + team_num)->mutex_box_state);
 
     //communicate status change
     communicate_status_changes(team_num, ind, last, BOX);
@@ -205,7 +206,7 @@ void communicate_status_changes(int team, int ind, int last, int current)
     char estados[5][20] = {"CORRIDA", "SEGURANCA", "BOX", "DESISTENCIA", "TERMINADO"};
 
     char msg[100];
-    sprintf("Carro %d passou do modo %s para o modo %s\n", (cars + ind)->num, estados[last], estados[current]);
+    sprintf(msg, "Carro %d passou do modo %s para o modo %s\n", (cars + ind)->num, estados[last], estados[current]);
 
     write((teams + team)->fd[1], msg, strlen(msg));
 }

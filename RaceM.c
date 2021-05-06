@@ -29,13 +29,13 @@ void Race_manager(int n_equipas)
 
     read_commands();
     data->on_going = 1;
-    print_debug("Comandos totalmente lidos\n");
+    print_debug("Primeiros comandos totalmente lidos\n");
 
     //read from all pipes
     fd_set read_set;
     print_debug("Listening from all pipes\n");
     int nread;
-    char line[MAXTAMLINE];
+    char line[MAXTAMCOMMANDS];
     char log_msg[MAXERRORMSG];
     while (1)
     {
@@ -47,51 +47,64 @@ void Race_manager(int n_equipas)
         //VERIFICAR SE O FD_NAMED_PIPE É EFETIVAMENTE O MAIOR
         if (select(fd_named_pipe + 1, &read_set, NULL, NULL, NULL) > 0)
         {
-
             if (FD_ISSET(fd_named_pipe, &read_set))
             {
                 nread = read(fd_named_pipe, line, MAXTAMLINE);
                 line[nread - 1] = 0;
 
-                if (strcmp(line, "START RACE!") == 0)
-                {
-                    if (data->on_going)
-                        sprintf(log_msg, "%s - Rejected, race is on going!\n", line);
-                    else
-                    {
-                        //recomecar a corrida
-                        //------------------------- to do -----------------------------//
-                        sprintf(log_msg, "%s - Restarting race\n", line);
-                    }
-                }
-                else
-                {
-                    // dispose of addcar commands
-                    char original[MAXTAMLINE];
-                    strcpy(original, line);
-                    char *token = strtok(line, " ");
-                    if (strcmp(token, "ADDCAR"))
-                    {
-                        // reject
-                        if (data->on_going)
-                            sprintf(log_msg, "%s - Rejected, race already started!\n", original);
-                        else
-                            sprintf(log_msg, "%s - Rejected, cannot add cars in after interrupt or sigint!\n", original);
-                    }
-                    else
-                    {
-                        sprintf(log_msg, "%s - Rejected, wrong command!\n", original);
-                    }
-                }
+                char *token = strtok(line, "\n");
 
-                log_entries(log_msg);
+                while (token != NULL)
+                {
+                    if (strcmp(token, "START RACE!") == 0)
+                    {
+                        if (data->on_going)
+                            sprintf(log_msg, "%s - Rejected, race is on going!\n", token);
+                        else
+                        {
+                            //recomecar a corrida
+                            //------------------------- to do -----------------------------//
+                            sprintf(log_msg, "%s - Restarting race\n", token);
+                        }
+                    }
+                    else
+                    {
+                        // dispose of addcar commands
+                        char original[100];
+                        strcpy(original, token);
+                        char *token2 = strtok(original, " ");
+                        if (strcmp(token2, "ADDCAR"))
+                        {
+                            // reject
+                            if (data->on_going)
+                                sprintf(log_msg, "%s - Rejected, race already started!\n", token);
+                            else
+                                sprintf(log_msg, "%s - Rejected, cannot add cars in after interrupt or sigint!\n", token);
+                        }
+                        else
+                        {
+                            sprintf(log_msg, "%s - Rejected, wrong command!\n", token);
+                        }
+                    }
+
+                    app_log(log_msg);
+                    token = strtok(token, "\n");
+                    token = strtok(NULL, "\n");
+                }
             }
             for (int i = 0; i < data->n_teams; ++i)
             {
                 if (FD_ISSET((teams + i)->fd[0], &read_set))
                 {
                     nread = read((teams + i)->fd[0], line, MAXTAMLINE);
-                    log_entries(line);
+
+                    char *token = strtok(line, "\n");
+
+                    while (token != NULL)
+                    {
+                        app_log(token);
+                        token = strtok(NULL, "\n");
+                    }
                 }
             }
         }
@@ -106,49 +119,65 @@ void Race_manager(int n_equipas)
 void read_commands()
 {
     char line_input[MAXTAMLINE] = "";
-    int nread;
+    int nread, leave = 0;
 
     while (1)
     {
+        if (leave == 1)
+            break;
+
         nread = read(fd_named_pipe, line_input, MAXTAMLINE);
         line_input[nread - 1] = 0;
-        /*int i = 0;
-        while (line_input[i] != 0)
-        {
-            if (line_input[i] == '\n' || line_input[i] == '\r')
-                line_input[i] = 0;
-            i++;
-        }*/
 
-        if (strcasecmp(line_input, "START RACE!") == 0)
+        char *token = strtok(line_input, "\n");
+        while (token != NULL)
         {
-
-            app_log("NEW COMMAND RECEIVED: START RACE\n");
-            int ver = verify_all_teams();
-            if (ver == 1)
+            if (leave == 1)
             {
-                for (int i = 0; i < data->n_teams; ++i)
+                app_log("RECEIVED TOO MANY COMMANDS: STARTING RACE BEFORE READ MORE COMMANDS\n");
+            }
+            else if (strcasecmp(token, "START RACE!") == 0)
+            {
+
+                app_log("NEW COMMAND RECEIVED: START RACE\n");
+                int ver = verify_all_teams();
+                leave = 0;
+                if (ver == 1)
                 {
-                    for (int j = (teams + i)->n_cars; j < data->max_car; ++j)
+                    for (int i = 0; i < data->n_teams; ++i)
                     {
-                        sem_post(&((teams + i)->car_ready));
+                        for (int j = (teams + i)->n_cars; j < data->max_car; ++j)
+                        {
+                            sem_post(&((teams + i)->car_ready));
+                        }
                     }
+                    leave = 1;
                 }
-                break;
+                else
+                    app_log("CANNOT START, NOT ENOUGH TEAMS\n");
             }
             else
             {
-                app_log("CANNOT START, NOT ENOUGH TEAMS\n");
-                continue;
+                int res = add_car(token);
+                if (res == -1)
+                {
+                    /*
+                    token = strtok(line_input, "\n");
+                    continue;
+                    char *tt = strtok(NULL, " ");
+                    while (tt != NULL)
+                    {
+                        char *tt = strtok(NULL, " ");
+                    }
+                    */
+                }
             }
-        }
-        else
-        {
-            add_car(line_input);
+            token = strtok(token, "\n");
+            token = strtok(NULL, "\n");
         }
     }
     //informar todos os carros, todas as equipas e o malfunction manager
-    for (int i = 0; i < (data->total_cars + data->n_teams + 1); ++i)
+    for (int i = 0; i < (data->total_cars + data->n_teams + 2); ++i)
     {
         sem_post(start_race);
     }
@@ -190,17 +219,19 @@ int add_car(char *line)
     // guardar uma copia da linha
     strcpy(original_line, line);
 
-    char *token = strtok(line, " ");
+    //printf("original: %s", original_line);
+
+    char *token = strtok(original_line, " ");
     if (strcasecmp(token, "ADDCAR") == 0)
     {
-        token = strtok(NULL, " ");
+        token = strtok(NULL, " "); //TEAM
         if (strcasecmp(token, "TEAM:") != 0)
         {
-            log_wrong_commands("TEAM FIELD INVALID", original_line);
+            log_wrong_commands("TEAM FIELD INVALID", line);
             return -1;
         }
 
-        token = strtok(NULL, " ");
+        token = strtok(NULL, " "); //B
         strcpy(team_name, token);
 
         //retirar a virgula
@@ -209,63 +240,63 @@ int add_car(char *line)
         if ((pos = team_exists(team_name)) == -1)
         {
             //log erro - não há espaço
-            log_wrong_commands("TEAM LIMIT EXCEEDED", original_line);
+            log_wrong_commands("TEAM LIMIT EXCEEDED", line);
             return -1;
         }
 
-        token = strtok(NULL, " ");
+        token = strtok(NULL, " "); //CAR
         if (strcasecmp(token, "CAR:") != 0)
         {
             //log erro - erro ao escrever car
-            log_wrong_commands("CAR FIELD INVALID", original_line);
+            log_wrong_commands("CAR FIELD INVALID", line);
             return -1;
         }
-        token = strtok(NULL, " ");
+        token = strtok(NULL, " "); //01
         car_num = atoi(token);
         if ((pos_car = car_exists(car_num, pos)) == -2)
         { //log erro - numero do carro já existe
-            log_wrong_commands("CAR NUMBER ALREADY EXISTS", original_line);
+            log_wrong_commands("CAR NUMBER ALREADY EXISTS", line);
             return -1;
         }
         else if (pos_car == -1)
         {
             //log erro - não há espaço
-            log_wrong_commands("NUMBER OF CARS EXCEEDED", original_line);
+            log_wrong_commands("NUMBER OF CARS EXCEEDED", line);
             return -1;
         }
 
         token = strtok(NULL, " ");
         if (strcasecmp(token, "SPEED:") != 0)
         {
-            log_wrong_commands("SPEED FIELD INVALID", original_line);
+            log_wrong_commands("SPEED FIELD INVALID", line);
             return -1;
         }
         token = strtok(NULL, " ");
         car_speed = atoi(token); // verificar conversao para inteiro
         if (car_speed < 0)
         {
-            log_wrong_commands("SPEED INVALID", original_line);
+            log_wrong_commands("SPEED INVALID", line);
             return -1;
         }
 
         token = strtok(NULL, " ");
         if (strcasecmp(token, "CONSUMPTION:") != 0)
         {
-            log_wrong_commands("CONSUPTION FIELD INVALID", original_line);
+            log_wrong_commands("CONSUPTION FIELD INVALID", line);
             return -1;
         }
         token = strtok(NULL, " ");
         car_consumption = atof(token); // verificar conversao para inteiro
         if (car_consumption < 0)
         {
-            log_wrong_commands("CAR CONSUPTION INVALID", original_line);
+            log_wrong_commands("CAR CONSUPTION INVALID", line);
             return -1;
         }
 
         token = strtok(NULL, " ");
         if (strcasecmp(token, "RELIABILITY:") != 0)
         {
-            log_wrong_commands("RELIABILITY FIELD INVALID", original_line);
+            log_wrong_commands("RELIABILITY FIELD INVALID", line);
             return -1;
         }
         token = strtok(NULL, " ");
@@ -273,7 +304,7 @@ int add_car(char *line)
         if (car_reliability < 0)
         {
             //log erro - velocidade negativa
-            log_wrong_commands("RELIABILITY INVALID", original_line);
+            log_wrong_commands("RELIABILITY INVALID", line);
             return -1;
         }
 
@@ -292,10 +323,10 @@ int add_car(char *line)
         (cars + pos * data->n_teams + pos_car)->reliability = car_reliability;
 
         sem_post(&((teams + pos)->car_ready));
-        log_load_car(original_line);
+        log_load_car(line);
         return 0;
     }
-    log_wrong_commands("USE \'START RACE!\' OR \'ADDCAR ...\' ", original_line);
+    log_wrong_commands("USE \'START RACE!\' OR \'ADDCAR ...\' ", line);
     return -1;
 }
 
@@ -303,7 +334,7 @@ void log_wrong_commands(char *error_msg, char *command)
 {
 
     char error[MAXERRORMSG];
-    sprintf("WRONG COMMAND - %s!! (%s).\n", error_msg, command);
+    sprintf(error, "WRONG COMMAND - %s!! (%s).\n", error_msg, command);
     app_log(error);
 }
 

@@ -10,6 +10,7 @@ void Team_manager(int num)
     info ids[data->max_car];
     (teams + num)->box_state = LIVRE;
     char msg[MAXTAMLINE];
+    int elapsed;
     sprintf(msg, "team %d entrou\n", num);
     print_debug(msg);
 
@@ -31,21 +32,48 @@ void Team_manager(int num)
     //repair car
     //fill tank
     //update box state and car state
-
+    int time_box = 2, t_max = data->T_Box_Max, t_min = data->T_Box_min;
     while (1)
     {
-        int time_box = 2, t_max = data->T_Box_Max, t_min = data->T_Box_min;
         sem_wait(&(teams + num)->entered_box);
-        /* T_Box_min -  T_Box_max*/
-        if (((cars + ((teams + num)->ind_catual))->malfunc) == 1)
+
+        int ind_car = ((teams + num)->ind_catual);
+        int elapsed = data->tunits_passed;
+
+        //check if it is a fake car
+        //fake cars may be used to end the race
+        if ((cars + ind_car)->num == -1)
         {
-            ((cars + ((teams + num)->ind_catual))->malfunc) == 0;
+            break;
+        }
+
+        /* T_Box_min -  T_Box_max*/
+        if (((cars + ind_car)->malfunc) == 1)
+        {
+            ((cars + ind_car)->malfunc) == 0;
             time_box = time_box + t_min + rand() % (t_max - t_min + 1);
         }
-        else
+
+        (cars + ind_car)->fuel = data->fuel_tank;
+        (cars + ind_car)->box_time = time_box;
+
+        for (int i = 0; i < time_box; i++)
         {
-            (cars + ((teams + num)->ind_catual))->fuel = data->fuel_tank;
+            pthread_mutex_lock(&data->end_tunit_mutex);
+            data->cars_ended_tunit += 1;
+            pthread_cond_signal(&data->end_tunit);
+
+            pthread_mutex_unlock(&data->end_tunit_mutex);
+
+            // wait for a tunit to pass
+            pthread_mutex_lock(&data->new_tunit_mutex);
+            while (elapsed == data->tunits_passed)
+            {
+                pthread_cond_wait(&data->new_tunit, &data->new_tunit_mutex);
+            }
+            pthread_mutex_unlock(&data->new_tunit_mutex);
         }
+
         sem_post(&(teams + num)->box_finished);
     }
 
