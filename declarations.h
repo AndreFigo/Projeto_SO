@@ -121,6 +121,8 @@ int verify_all_teams();
 
 void terminate();
 
+void terminate_sem();
+
 void read_commands();
 
 void init_sem();
