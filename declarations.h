@@ -78,7 +78,7 @@ typedef struct
 
 typedef struct
 {
-    sem_t car_ready, box_access, entered_box, box_finished, mutex_box_state;
+    sem_t car_ready,  entered_box, box_finished, mutex_box_state;
     int box_state, n_cars, n_cars_seg_mode, ind_catual;
     char name[MAXNOMEEQUIPA];
     int fd[2];
@@ -162,6 +162,8 @@ int last_place(car *copy, int len);
 void on_track_and_total_stops(int *n_stops, int *on_track, car *copy, int len);
 
 void communicate_status_changes(int team, int ind, int last, int current);
+
+int max_file();
 
 /* ================================= VARIAVEIS GLOBAIS ================================= */
 

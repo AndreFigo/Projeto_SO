@@ -4,7 +4,8 @@
 # 20/21
 
 CC= gcc
-FLAGS= -Wall -g -pthread
+FLAGS= -Wall -g -pthread 
+FLAGS2= -lm
 OBJS = RaceS.o Malfunction.o RaceM.o TeamM.o Carro.o
 PROG = race
 
@@ -16,10 +17,10 @@ clean:
 		rm ${OBJS} *~ ${PROG}
 
 ${PROG}:	${OBJS}
-		${CC} ${FLAGS} ${OBJS} -o $@
+		${CC} ${FLAGS} ${OBJS} ${FLAGS2} -o $@
 
 .c.o:
-		${CC} ${FLAGS} $< -c -o $@
+		${CC} ${FLAGS} $< -c -o  $@
 
 
 ################################

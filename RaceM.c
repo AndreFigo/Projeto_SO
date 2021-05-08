@@ -34,18 +34,23 @@ void Race_manager(int n_equipas)
     //read from all pipes
     fd_set read_set;
     print_debug("Listening from all pipes\n");
-    int nread;
+    int nread,leave=0;
     char line[MAXTAMCOMMANDS];
     char log_msg[MAXERRORMSG];
+
+    int max_fd= max_file();
     while (1)
-    {
+    {   
+        if (leave)
+            break;
         FD_ZERO(&read_set);
         FD_SET(fd_named_pipe, &read_set);
+     
         for (int i = 0; i < data->n_teams; ++i)
             FD_SET((teams + i)->fd[0], &read_set);
 
         //VERIFICAR SE O FD_NAMED_PIPE É EFETIVAMENTE O MAIOR
-        if (select(fd_named_pipe + 1, &read_set, NULL, NULL, NULL) > 0)
+        if (select(max_fd + 1, &read_set, NULL, NULL, NULL) > 0)
         {
             if (FD_ISSET(fd_named_pipe, &read_set))
             {
@@ -97,12 +102,26 @@ void Race_manager(int n_equipas)
                 if (FD_ISSET((teams + i)->fd[0], &read_set))
                 {
                     nread = read((teams + i)->fd[0], line, MAXTAMLINE);
+                    line[nread - 1] = 0;
 
                     char *token = strtok(line, "\n");
 
                     while (token != NULL)
-                    {
-                        app_log(token);
+                    {   
+                        sprintf(log_msg, "%s\n", token);
+
+                        app_log(log_msg);
+
+     
+                        pthread_mutex_lock(&data->finish_mutex);
+                        if (data->cars_finished == data->total_cars){
+                            pthread_mutex_unlock(&data->finish_mutex);
+                            leave=1;
+                            break;
+                        }
+                        pthread_mutex_unlock(&data->finish_mutex);
+                        
+
                         token = strtok(NULL, "\n");
                     }
                 }
@@ -114,6 +133,15 @@ void Race_manager(int n_equipas)
     for (int i = 0; i < n_equipas; ++i)
         wait(NULL);
     print_debug("Saiu race manager\n");
+}
+
+int max_file(){
+    int max= fd_named_pipe;
+    for  (int i = 0; i < data->n_teams; ++i){
+        if ((teams + i)->fd[0] > max)
+            max=(teams + i)->fd[0];
+    }
+    return max;
 }
 
 void read_commands()
@@ -132,6 +160,9 @@ void read_commands()
         char *token = strtok(line_input, "\n");
         while (token != NULL)
         {
+
+            
+
             if (leave == 1)
             {
                 app_log("RECEIVED TOO MANY COMMANDS: STARTING RACE BEFORE READ MORE COMMANDS\n");
@@ -158,19 +189,7 @@ void read_commands()
             }
             else
             {
-                int res = add_car(token);
-                if (res == -1)
-                {
-                    /*
-                    token = strtok(line_input, "\n");
-                    continue;
-                    char *tt = strtok(NULL, " ");
-                    while (tt != NULL)
-                    {
-                        char *tt = strtok(NULL, " ");
-                    }
-                    */
-                }
+                add_car(token);
             }
             token = strtok(token, "\n");
             token = strtok(NULL, "\n");
@@ -199,20 +218,24 @@ int team_exists(char *team_input)
 int car_exists(int car_num, int team_pos)
 {
     //printf("Checking car %d\n", car_num);
-    for (int i = 0; i < data->max_car; i++)
+    for (int i = 0; i < data->max_car * data->n_teams; i++)
     {
-        if ((cars + team_pos * data->n_teams + i)->num == car_num)
+        if ((cars +i)->num == car_num)
             return -2;
-        else if ((cars + team_pos * data->n_teams + i)->num == -1)
-            return i;
+    }
+    for (int i=0;i< data->max_car;++i){
+        if ((cars + team_pos* data->max_car+i)->num == -1)
+            return team_pos* data->max_car+i;
+
     }
     return -1;
 }
 
 int add_car(char *line)
 {
+
     char team_name[MAXNOMEEQUIPA];
-    int pos = 0, pos_car = 0, car_num = -1, car_speed = 0, car_reliability = 0;
+    int pos = -1, pos_car = -1, car_num = -1, car_speed = 0, car_reliability = 0;
     float car_consumption = 0;
 
     char original_line[MAXTAMLINE];
@@ -310,19 +333,24 @@ int add_car(char *line)
 
         if (strcmp((teams + pos)->name, "") == 0)
             strcpy((teams + pos)->name, team_name);
+        
+        //printf("POS %d\nNAME %s\nNUM %d\nPOSCAR %d\n", pos,(teams + pos)->name, car_num , pos_car);
+
         (teams + pos)->n_cars += 1;
 
         (data->total_cars)++;
 
-        (cars + pos * data->n_teams + pos_car)->num = car_num;
+        (cars + pos_car)->num = car_num;
 
-        (cars + pos * data->n_teams + pos_car)->speed = car_speed;
+        (cars + pos_car)->speed = car_speed;
 
-        (cars + pos * data->n_teams + pos_car)->consumption = car_consumption;
+        (cars + pos_car)->consumption = car_consumption;
 
-        (cars + pos * data->n_teams + pos_car)->reliability = car_reliability;
+        (cars + pos_car)->reliability = car_reliability;
 
-        sem_post(&((teams + pos)->car_ready));
+        if (sem_post(&((teams + pos)->car_ready))==-1){
+            printf("Erro no sem_post\n");
+        }
         log_load_car(line);
         return 0;
     }

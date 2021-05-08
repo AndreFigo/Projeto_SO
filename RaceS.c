@@ -101,12 +101,6 @@ void init_sem()
             exit(1);
         }
 
-        if (sem_init(&((teams + i)->box_access), 1, 1) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d box_access\n", i);
-            exit(1);
-        }
-
         if (sem_init(&((teams + i)->box_finished), 1, 0) != 0)
         {
             fprintf(stderr, "Problemas a inicializar o semaforo %d box_finished\n", i);
@@ -125,6 +119,8 @@ void init_sem()
             exit(1);
         }
     }
+
+    
 
     for (int i = 0; i < data->n_teams * data->max_car; ++i)
     {
@@ -191,14 +187,18 @@ void sigtstp(int signo)
 {
 
     //print estatisticas
+    print_debug("\n^Z pressed. Showing stats\n");
     car *copy = (car *)malloc(sizeof(car) * data->max_car * data->n_teams);
 
     sem_wait(begin_copy);
+    print_debug("Began copy\n");
 
     memcpy(copy, cars, sizeof(car) * data->max_car * data->n_teams);
     int n_malf = data->n_malfuncs;
 
     sem_post(ended_copy);
+    print_debug("Ended copy\n");
+
 
     int seen[5];
     for (int j = 0; j < 5; j++)
@@ -327,8 +327,8 @@ void init(float *config)
         exit(1);
     }
 
-    teams = (team *)data + 1;
-    cars = (car *)teams + n_teams;
+    teams = (team *)(data + 1);
+    cars = (car *)(teams + n_teams);
 
     data->logfile = logfile;
 
@@ -354,8 +354,8 @@ void init(float *config)
     {
         for (int j = 0; j < data->max_car; ++j)
         {
-            (cars + i * data->n_teams + j)->ind_team = i;
-            (cars + i * data->n_teams + j)->num = -1;
+            (cars + i * data->max_car + j)->ind_team = i;
+            (cars + i * data->max_car + j)->num = -1;
         }
         //inicilizar o numero do carro ^
 
@@ -363,6 +363,10 @@ void init(float *config)
         strcpy((teams + i)->name, "");
         (teams + i)->n_cars = 0;
     }
+
+
+    
+
 
     mqid = msgget(IPC_PRIVATE, IPC_CREAT | 0777);
     if (mqid < 0)
@@ -389,6 +393,8 @@ void init(float *config)
     }
 
     init_sem();
+    
+
 }
 
 void ignore_signals()
@@ -416,8 +422,8 @@ void init_signal()
     finish_race.sa_flags = 0;
     finish_race.sa_handler = &sigint;
 
-    sigaction(SIGINT, &print_est, NULL);
-    sigaction(SIGTSTP, &finish_race, NULL);
+    sigaction(SIGINT, &finish_race, NULL);
+    sigaction(SIGTSTP, &print_est, NULL);
 }
 
 void terminate()
@@ -477,12 +483,14 @@ void terminate()
         perror("ERROR: Failed to remove shared memory");
         exit(1);
     }
+
+    unlink(PIPE_NAME);
 }
 
 int main()
 {
 
-    ignore_signals();
+    //ignore_signals();
 
     if ((logfile = creat(LOGFILE, S_IRWXU | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP)) == -1)
     {
@@ -516,6 +524,8 @@ int main()
     }
 
     sem_wait(start_race);
+
+    print_debug("Simulator entered race\n");
     init_signal();
 
     // sinais
@@ -524,10 +534,14 @@ int main()
 
     while (data->cars_finished != data->total_cars)
     {
+        print_debug("UM CARRO ACABOU\n");
+        printf("%d\n", data->cars_finished);
         pthread_cond_wait(&data->all_finished, &data->finish_mutex);
     }
 
     pthread_mutex_unlock(&data->finish_mutex);
+
+    print_debug("HEEEEEEE\n");
 
     data->on_going = 0; //neeeeeeed protection
 
