@@ -273,7 +273,7 @@ void init_sem()
     {
         if (sem_init(&((cars + i)->state_mutex), 1, 1) != 0)
         {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_state\n", i);
+            fprintf(stderr, "Problemas a inicializar o semaforo %d state_mutex\n", i);
             exit(1);
         }
     }
@@ -283,7 +283,7 @@ void init_sem()
     {
         perror("Problemas a inicializar o atributo do mutex\n");
         exit(1);
-    };
+    }
     if (pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED) != 0)
     {
         perror("Problemas ao partilhar mutex\n");
@@ -304,17 +304,57 @@ void init_sem()
 
     /* Initialize mutex. */
     if (pthread_mutex_init(&(data->finish_mutex), &(attrmutex)) != 0)
-        pthread_mutex_init(&(data->new_tunit_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->end_tunit_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->stats_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->check_malf_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->forced_stop_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->log_mutex), &(attrmutex));
+    {
+        perror("Problemas a inicializar o mutex finish_mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_init(&(data->new_tunit_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex new_tunit_mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_init(&(data->end_tunit_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex end_tunit_mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_init(&(data->stats_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex stats_mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_init(&(data->check_malf_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex check_malf_mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_init(&(data->forced_stop_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex forced_stop_mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_init(&(data->log_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex log_mutex\n");
+        exit(1);
+    }
 
     /* Initialize condition variables. */
-    pthread_cond_init(&(data->all_finished), &(attrcondv));
-    pthread_cond_init(&(data->new_tunit), &(attrcondv));
-    pthread_cond_init(&(data->end_tunit), &(attrcondv));
+    if (pthread_cond_init(&(data->all_finished), &(attrcondv)) != 0)
+    {
+        perror("Problemas a inicializar a variavel de condicao all_finished\n");
+        exit(1);
+    }
+    if (pthread_cond_init(&(data->new_tunit), &(attrcondv)) != 0)
+    {
+        perror("Problemas a inicializar a variavel de condicao new_tunit\n");
+        exit(1);
+    }
+    if (pthread_cond_init(&(data->end_tunit), &(attrcondv)) != 0)
+    {
+        perror("Problemas a inicializar a variavel de condicao end_tunit\n");
+        exit(1);
+    }
 
     //to do BOX SEM, ...
     /* Initialize thread mutex. */
@@ -434,27 +474,27 @@ void init_signal()
     sigaction(SIGTSTP, &print_est, NULL);
 }
 
-void terminate()
+void terminate_sem()
 {
 
     sem_unlink("LOG_MUTEX");
     if (sem_close(start_race) == -1)
     {
-        perror("ERROR: Failed to close semaphore");
+        perror("ERROR: Failed to close semaphore\n");
         exit(1);
     }
     sem_unlink("START");
 
     if (sem_close(begin_copy) == -1)
     {
-        perror("ERROR: Failed to close semaphore");
+        perror("ERROR: Failed to close semaphore\n");
         exit(1);
     }
     sem_unlink("BEG_COPY");
 
     if (sem_close(ended_copy) == -1)
     {
-        perror("ERROR: Failed to close semaphore");
+        perror("ERROR: Failed to close semaphore\n");
         exit(1);
     }
     sem_unlink("END_COPY");
@@ -463,14 +503,116 @@ void terminate()
     {
         if (sem_destroy(&((teams + i)->car_ready)) == -1)
         {
-            perror("ERROR: Failed to destroy semaphore");
+            perror("ERROR: Failed to destroy car_ready semaphore\n");
+            exit(1);
+        }
+
+        if (sem_destroy(&((teams + i)->box_finished)) == -1)
+        {
+            perror("ERROR: Failed to destroy box_finished semaphore\n");
+            exit(1);
+        }
+
+        if (sem_destroy(&((teams + i)->entered_box)) == -1)
+        {
+            perror("ERROR: Failed to destroy entered_box semaphore\n");
+            exit(1);
+        }
+
+        if (sem_destroy(&((teams + i)->mutex_box_state)) == -1)
+        {
+            perror("ERROR: Failed to destroy mutex_box_state semaphore\n");
             exit(1);
         }
     }
 
+    for (int i = 0; i < data->n_teams * data->max_car; ++i)
+    {
+        if (sem_destroy(&((cars + i)->state_mutex)) == -1)
+        {
+            fprintf(stderr, "Problemas a destruir o semaforo %d state_mutex\n", i);
+            exit(1);
+        }
+    }
+
+    /* Destroying mutexes */
+    if (pthread_mutex_destroy(&(data->finish_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy finish_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->new_tunit_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy new_tunit_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->end_tunit_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy end_tunit_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->stats_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy stats_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->check_malf_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy check_malf_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->forced_stop_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy forced_stop_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->log_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy log_mutex mutex\n");
+        exit(1);
+    }
+
+    /* Destroying mutex attribute */
+    if (pthread_mutexattr_destroy(&attrmutex) != 0)
+    {
+        perror("ERROR: Failed to destroy mutex attribute\n");
+        exit(1);
+    }
+
+    /* Destroying condition variables */
+    if (pthread_cond_destroy(&(data->all_finished)) != 0)
+    {
+        perror("ERROR: Failed to destroy condition variable all_finished\n");
+        exit(1);
+    }
+    if (pthread_cond_destroy(&(data->new_tunit)) != 0)
+    {
+        perror("ERROR: Failed to destroy condition variable new_tunit\n");
+        exit(1);
+    }
+    if (pthread_cond_destroy(&(data->end_tunit)) != 0)
+    {
+        perror("ERROR: Failed to destroy condition variable end_tunit\n");
+        exit(1);
+    }
+
+    if (pthread_condattr_destroy(&attrcondv) != 0)
+    {
+        perror("ERROR: Failed to destroy condition variable\n");
+        exit(1);
+    }
+}
+
+void terminate()
+{
+    /* Destroy semaphores*/
+    //o que é que é este log_mutex?
+
+    terminate_sem();
+
     if (close(data->logfile) == -1)
     {
-        perror("ERROR: Failed to close logfile");
+        perror("ERROR: Failed to close logfile\n");
         exit(1);
     }
     //unlink(LOGFILE);
@@ -478,16 +620,43 @@ void terminate()
 
     if (shmdt(data) == -1)
     {
-        perror("ERROR: Failed to dettach shared memory");
+        perror("ERROR: Failed to dettach shared memory\n");
         exit(1);
     }
     if (shmctl(shmid, IPC_RMID, NULL) == -1)
     {
-        perror("ERROR: Failed to remove shared memory");
+        perror("ERROR: Failed to remove shared memory\n");
         exit(1);
     }
 
-    unlink(PIPE_NAME);
+    /* Destroying Named Pipe */
+    if (unlink(PIPE_NAME) == -1)
+    {
+        perror("ERROR: Failed to unlink named pipe\n");
+        exit(1);
+    }
+
+    /* Closing unnamed pipes */
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        if (close((teams + i)->fd[0]) == -1)
+        {
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+        if (close((teams + i)->fd[1] == -1))
+        {
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+    }
+
+    /* Destroying Message Queue */
+    if (msgctl(mqid, IPC_RMID, 0) == -1)
+    {
+        perror("ERROR: Failed to destroy message queue\n");
+        exit(1);
+    }
 }
 
 int main()
