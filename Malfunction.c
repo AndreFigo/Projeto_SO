@@ -32,6 +32,7 @@ void Malfunction_manager(int t_avaria)
 
         if (data->cars_finished == data->total_cars){
             pthread_mutex_unlock(&data->finish_mutex);
+            pthread_mutex_unlock(&data->end_tunit_mutex);
             break;
         }
 
@@ -68,8 +69,9 @@ void Malfunction_manager(int t_avaria)
                 // no need because it hasnt passed a second yet
                 //sem_wait(&(cars+i)->state_mutex);
                 if ((cars + i)->num != -1 && (cars + i)->state < BOX && (cars + i)->malfunc ==0)
-                {
-                    message.mtype = i;
+                {   
+                    // ind + 1 because mtype cant be zero
+                    message.mtype = i+1;
                     // calcualte malfunc
                     send_damage = rand() % 100 + 1;
                     // send info to cars

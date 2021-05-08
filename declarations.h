@@ -78,7 +78,7 @@ typedef struct
 
 typedef struct
 {
-    sem_t car_ready,  entered_box, box_finished, mutex_box_state;
+    sem_t car_ready, entered_box, box_finished, mutex_box_state;
     int box_state, n_cars, n_cars_seg_mode, ind_catual;
     char name[MAXNOMEEQUIPA];
     int fd[2];
@@ -92,7 +92,7 @@ typedef struct
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
     int on_going, stop, n_malfuncs, stats, on_track;
     float fuel_tank;
-    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex, check_malf_mutex, forced_stop_mutex, log_mutex;
     pthread_cond_t all_finished, new_tunit, end_tunit;
 
 } info_struct;
@@ -165,6 +165,8 @@ void communicate_status_changes(int team, int ind, int last, int current);
 
 int max_file();
 
+void increment_cars_finished();
+
 /* ================================= VARIAVEIS GLOBAIS ================================= */
 
 info_struct *data;
@@ -177,7 +179,7 @@ int logfile, fd_named_pipe;
 pthread_mutexattr_t attrmutex;
 pthread_condattr_t attrcondv;
 //mudar forced_stop
-sem_t *log_mutex, *start_race, *forced_stop, *begin_copy, *ended_copy;
+sem_t *start_race, *begin_copy, *ended_copy;
 struct sigaction print_est, finish_race;
 sigset_t block_set_est, block_set_fin;
 

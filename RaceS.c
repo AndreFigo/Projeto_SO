@@ -55,118 +55,22 @@ int verify(float *config)
     return 0;
 }
 
-void init_sem()
-{
-    print_debug_no_sem("Criando os semaforos\n");
-    sem_unlink("LOG_MUTEX");
-    if ((log_mutex = sem_open("LOG_MUTEX", O_CREAT | O_EXCL, 0766, 1)) == SEM_FAILED)
-    {
-        perror("ERROR: Failed to create semaphore\n");
-        exit(1);
-    }
-
-    sem_unlink("FORCED_STOP");
-    if ((forced_stop = sem_open("FORCED_STOP", O_CREAT | O_EXCL, 0766, 1)) == SEM_FAILED)
-    {
-        perror("ERROR: Failed to create semaphore\n");
-        exit(1);
-    }
-
-    sem_unlink("START");
-    if ((start_race = sem_open("START", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
-    {
-        perror("ERROR: Failed to create semaphore\n");
-        exit(1);
-    }
-
-    sem_unlink("BEG_COPY");
-    if ((begin_copy = sem_open("BEG_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
-    {
-        perror("ERROR: Failed to create semaphore\n");
-        exit(1);
-    }
-
-    sem_unlink("END_COPY");
-    if ((ended_copy = sem_open("END_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
-    {
-        perror("ERROR: Failed to create semaphore\n");
-        exit(1);
-    }
-
-    for (int i = 0; i < data->n_teams; ++i)
-    {
-        if (sem_init(&((teams + i)->car_ready), 1, 0) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d car_ready\n", i);
-            exit(1);
-        }
-
-        if (sem_init(&((teams + i)->box_finished), 1, 0) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d box_finished\n", i);
-            exit(1);
-        }
-
-        if (sem_init(&((teams + i)->entered_box), 1, 0) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d entered_box\n", i);
-            exit(1);
-        }
-
-        if (sem_init(&((teams + i)->mutex_box_state), 1, 1) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_box_state\n", i);
-            exit(1);
-        }
-    }
-
-    
-
-    for (int i = 0; i < data->n_teams * data->max_car; ++i)
-    {
-        if (sem_init(&((cars + i)->state_mutex), 1, 1) != 0)
-        {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_state\n", i);
-            exit(1);
-        }
-    }
-
-    /* Initialize attribute of mutex. */
-    pthread_mutexattr_init(&(attrmutex));
-    pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED);
-
-    /* Initialize attribute of condition variable. */
-    pthread_condattr_init(&(attrcondv));
-    pthread_condattr_setpshared(&(attrcondv), PTHREAD_PROCESS_SHARED);
-
-    /* Initialize mutex. */
-    pthread_mutex_init(&(data->finish_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->new_tunit_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->end_tunit_mutex), &(attrmutex));
-    pthread_mutex_init(&(data->stats_mutex), &(attrmutex));
-
-    /* Initialize condition variables. */
-    pthread_cond_init(&(data->all_finished), &(attrcondv));
-    pthread_cond_init(&(data->new_tunit), &(attrcondv));
-    pthread_cond_init(&(data->end_tunit), &(attrcondv));
-
-    //to do BOX SEM, ...
-    /* Initialize thread mutex. */
-}
-
 void sigint(int signo)
 {
-
+    app_log("^C pressed. Terminating race\n");
     //finish race
-    sem_wait(forced_stop);
+    pthread_mutex_lock(&data->forced_stop_mutex);
     data->stop = 1;
-    sem_post(forced_stop);
+    pthread_mutex_unlock(&data->forced_stop_mutex);
+
     //wait for everyone using cond variable
 
     pthread_mutex_lock(&data->finish_mutex);
 
     while (data->cars_finished != data->total_cars)
     {
+        print_debug("UM CARRO ACABOU\n");
+        printf("%d\n", data->cars_finished);
         pthread_cond_wait(&data->all_finished, &data->finish_mutex);
     }
 
@@ -180,6 +84,7 @@ void sigint(int signo)
     for (int i = 0; i < 2; i++)
         wait(NULL);
 
+    app_log("SIMULATOR CLOSING\n");
     terminate();
 }
 
@@ -187,7 +92,13 @@ void sigtstp(int signo)
 {
 
     //print estatisticas
-    print_debug("\n^Z pressed. Showing stats\n");
+    app_log("^Z pressed. Showing stats\n");
+
+    pthread_mutex_lock(&data->stats_mutex);
+
+    data->stats = 1;
+    pthread_mutex_unlock(&data->stats_mutex);
+
     car *copy = (car *)malloc(sizeof(car) * data->max_car * data->n_teams);
 
     sem_wait(begin_copy);
@@ -198,7 +109,6 @@ void sigtstp(int signo)
 
     sem_post(ended_copy);
     print_debug("Ended copy\n");
-
 
     int seen[5];
     for (int j = 0; j < 5; j++)
@@ -228,16 +138,17 @@ void sigtstp(int signo)
 
     // escrever o pior
     ind = last_place(copy, data->max_car * data->n_teams);
-    sprintf(stats, "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+    sprintf(stats, "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
     strcat(tabela, separator);
     strcat(tabela, stats);
 
     //escrevr os stops
-    int n_stops, on_track;
+    int n_stops = 0, on_track = 0;
     on_track_and_total_stops(&n_stops, &on_track, copy, data->max_car * data->n_teams);
     sprintf(stats, "Total de paragens: %d\nTotal de avarias: %d\nEm pista: %d\n", n_stops, n_malf, on_track);
     strcat(tabela, separator);
     strcat(tabela, stats);
+    strcat(tabela, separator);
 
     app_log(tabela);
 
@@ -306,6 +217,109 @@ int max_distance(car *copy, int len, int *seen, int len2)
     return ind_max;
 }
 
+void init_sem()
+{
+    print_debug_no_sem("Criando os semaforos\n");
+
+    sem_unlink("START");
+    if ((start_race = sem_open("START", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
+    sem_unlink("BEG_COPY");
+    if ((begin_copy = sem_open("BEG_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
+    sem_unlink("END_COPY");
+    if ((ended_copy = sem_open("END_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        if (sem_init(&((teams + i)->car_ready), 1, 0) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d car_ready\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->box_finished), 1, 0) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d box_finished\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->entered_box), 1, 0) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d entered_box\n", i);
+            exit(1);
+        }
+
+        if (sem_init(&((teams + i)->mutex_box_state), 1, 1) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_box_state\n", i);
+            exit(1);
+        }
+    }
+
+    for (int i = 0; i < data->n_teams * data->max_car; ++i)
+    {
+        if (sem_init(&((cars + i)->state_mutex), 1, 1) != 0)
+        {
+            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_state\n", i);
+            exit(1);
+        }
+    }
+
+    /* Initialize attribute of mutex. */
+    if (pthread_mutexattr_init(&(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o atributo do mutex\n");
+        exit(1);
+    };
+    if (pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED) != 0)
+    {
+        perror("Problemas ao partilhar mutex\n");
+        exit(1);
+    }
+
+    /* Initialize attribute of condition variable. */
+    if (pthread_condattr_init(&(attrcondv)) != 0)
+    {
+        perror("Problemas ao inicializar a variavel de condicao\n");
+        exit(1);
+    }
+    if (pthread_condattr_setpshared(&(attrcondv), PTHREAD_PROCESS_SHARED) != 0)
+    {
+        perror("Problemas ao partilhar a variavel de condicao\n");
+        exit(1);
+    }
+
+    /* Initialize mutex. */
+    if (pthread_mutex_init(&(data->finish_mutex), &(attrmutex)) != 0)
+        pthread_mutex_init(&(data->new_tunit_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->end_tunit_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->stats_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->check_malf_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->forced_stop_mutex), &(attrmutex));
+    pthread_mutex_init(&(data->log_mutex), &(attrmutex));
+
+    /* Initialize condition variables. */
+    pthread_cond_init(&(data->all_finished), &(attrcondv));
+    pthread_cond_init(&(data->new_tunit), &(attrcondv));
+    pthread_cond_init(&(data->end_tunit), &(attrcondv));
+
+    //to do BOX SEM, ...
+    /* Initialize thread mutex. */
+}
+
 void init(float *config)
 {
     if (verify(config) == -1)
@@ -364,10 +378,6 @@ void init(float *config)
         (teams + i)->n_cars = 0;
     }
 
-
-    
-
-
     mqid = msgget(IPC_PRIVATE, IPC_CREAT | 0777);
     if (mqid < 0)
     {
@@ -393,8 +403,6 @@ void init(float *config)
     }
 
     init_sem();
-    
-
 }
 
 void ignore_signals()
@@ -429,11 +437,6 @@ void init_signal()
 void terminate()
 {
 
-    if (sem_close(log_mutex) == -1)
-    {
-        perror("ERROR: Failed to close semaphore");
-        exit(1);
-    }
     sem_unlink("LOG_MUTEX");
     if (sem_close(start_race) == -1)
     {
@@ -490,7 +493,7 @@ void terminate()
 int main()
 {
 
-    //ignore_signals();
+    ignore_signals();
 
     if ((logfile = creat(LOGFILE, S_IRWXU | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP)) == -1)
     {
@@ -534,14 +537,14 @@ int main()
 
     while (data->cars_finished != data->total_cars)
     {
-        print_debug("UM CARRO ACABOU\n");
-        printf("%d\n", data->cars_finished);
+        //print_debug("UM CARRO ACABOU\n");
+        //printf("%d\n", data->cars_finished);
         pthread_cond_wait(&data->all_finished, &data->finish_mutex);
     }
 
     pthread_mutex_unlock(&data->finish_mutex);
 
-    print_debug("HEEEEEEE\n");
+    print_debug("WEEEEEEE\n");
 
     data->on_going = 0; //neeeeeeed protection
 
@@ -623,26 +626,29 @@ float *configurationRead()
 void app_log(char *msg)
 {
 
-    sem_wait(log_mutex);
+    pthread_mutex_lock(&data->log_mutex);
+    time_t now;
+    time(&now);
+    struct tm *timeinfo = localtime(&now);
+    char log_msg[MAXERRORMSG];
+    sprintf(log_msg, "%d:%d:%d %s", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, msg);
+    //char *date = ctime(&data->time);
+    //date[(int)strlen(date) - 1] = ' ';
+    //write(1, date, strlen(date));
+    //write(data->logfile, date, strlen(date));
 
-    time(&data->time);
-    char *date = ctime(&data->time);
-    date[(int)strlen(date) - 1] = ' ';
-    write(1, date, strlen(date));
-    write(data->logfile, date, strlen(date));
-
-    write(1, msg, strlen(msg));
-    write(data->logfile, msg, strlen(msg));
-
-    sem_post(log_mutex);
+    write(1, log_msg, strlen(log_msg));
+    write(data->logfile, log_msg, strlen(log_msg));
+    pthread_mutex_unlock(&data->log_mutex);
 }
 
 void print_debug(char *msg)
 {
 #if DEBUG
-    sem_wait(log_mutex);
+    pthread_mutex_lock(&data->log_mutex);
     printf("%s", msg);
-    sem_post(log_mutex);
+    pthread_mutex_unlock(&data->log_mutex);
+
 #endif
 }
 
