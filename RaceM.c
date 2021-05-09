@@ -282,7 +282,7 @@ void read_commands()
 
             if (leave == 1)
             {
-                app_log("RECEIVED TOO MANY COMMANDS: STARTING RACE BEFORE READ MORE COMMANDS\n");
+                app_log("RECEIVED TOO MANY COMMANDS: STARTING RACE BEFORE READING MORE COMMANDS\n");
             }
             else if (strcasecmp(token, "START RACE!") == 0)
             {

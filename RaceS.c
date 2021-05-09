@@ -131,7 +131,7 @@ void print_stats(car *c, int n_malf)
     int ind;
 
     char separator[50] = "----------------------------------------\n";
-    char stats[7][MAXTAMLINE] = {0};
+    char stats[7][100] = {0};
     //strcat(tabela, "\nESTATISTICAS\n");
 
     for (int j = 0; j < 5; j++)
@@ -300,6 +300,7 @@ void init_sem()
             exit(1);
         }
 
+        //mudar para mutex
         if (sem_init(&((teams + i)->mutex_box_state), 1, 1) != 0)
         {
             fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_box_state\n", i);
@@ -307,6 +308,8 @@ void init_sem()
         }
     }
 
+
+    // mudar para mutex
     for (int i = 0; i < data->n_teams * data->max_car; ++i)
     {
         if (sem_init(&((cars + i)->state_mutex), 1, 1) != 0)

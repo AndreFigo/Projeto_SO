@@ -26,7 +26,7 @@ void Malfunction_manager(int t_avaria)
 
         sem_wait(start_race);
         int send_damage;
-        char warning[MAXWARNINGMSG], msg[MAXTAMLINE];
+        char warning[MAXWARNINGMSG], msg[MAXWARNINGMSG];
 
 
         while (1)

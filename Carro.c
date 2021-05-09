@@ -155,6 +155,7 @@ void *car_func(void *p)
 
                 if (((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state < OCUPADO) || ((cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state == LIVRE))
                 {
+                    (teams + team_num)->box_state = OCUPADO;
                     int last = CORRIDA;
                     if ((cars + ind)->state == SEGURANCA)
                         last = SEGURANCA;
@@ -261,9 +262,6 @@ void enter_box(int team_num, int ind, int last)
     (cars + ind)->state = BOX;
     (teams + team_num)->ind_catual = ind;
 
-    sem_wait(&(teams + team_num)->mutex_box_state);
-    (teams + team_num)->box_state = OCUPADO;
-    sem_post(&(teams + team_num)->mutex_box_state);
 
     //communicate status change
     communicate_status_changes(team_num, ind, last, BOX);

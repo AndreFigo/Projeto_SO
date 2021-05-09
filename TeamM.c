@@ -29,7 +29,7 @@ void Team_manager(int num)
 
     info *ids = (info *)malloc(sizeof(info) * data->max_car);
     (teams + num)->box_state = LIVRE;
-    char msg[MAXTAMLINE];
+    char msg[MAXWARNINGMSG];
     sprintf(msg, "team %d entrou\n", num);
     print_debug(msg);
 
