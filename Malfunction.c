@@ -104,22 +104,25 @@ void Malfunction_manager(int t_avaria)
             pthread_mutex_unlock(&data->new_tunit_mutex);
         }
 
+
         for(int i=0; i< data->total_cars;++i)
             sem_post(end_race);
 
-        pthread_mutex_lock(&data->interupt_mutex);
+        print_stats(cars,data->n_malfuncs);
 
-        if (data->interupt==1){
-            pthread_mutex_unlock(&data->interupt_mutex);
-            sem_post(end_race);
-            pthread_mutex_lock(&data->forced_stop_mutex);
-            if( data-> stop==1){
-                pthread_mutex_unlock(&data->forced_stop_mutex);
-                break;
-            }
+        pthread_mutex_lock(&data->interupt_mutex);
+        pthread_mutex_lock(&data->forced_stop_mutex);
+        if (data->interupt==1 && data->stop==0){
             pthread_mutex_unlock(&data->forced_stop_mutex);
+            pthread_mutex_unlock(&data->interupt_mutex);
+
+            pthread_mutex_lock(& data->on_going_mutex);
+            data->on_going=0;
+            app_log("RACE INTERRUPTED SUCCESFULLY. READY TO START AGAIN\n");
+            pthread_mutex_unlock(& data->on_going_mutex);
             continue;
         }else{
+            pthread_mutex_unlock(&data->forced_stop_mutex);
             pthread_mutex_unlock(&data->interupt_mutex);
             break;
         }

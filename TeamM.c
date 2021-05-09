@@ -126,10 +126,11 @@ void Team_manager(int num)
     }
 
     //sleep(4);
-
+    sprintf(msg, "team %d a espera dos seus carros\n", num);
+    print_debug(msg);
     free(ids);
     for (int i = 0; i < (teams + num)->n_cars; ++i)
-        pthread_join((cars + num * data->n_teams + i)->tid, NULL);
+        pthread_join((cars + num * data->max_car + i)->tid, NULL);
 
     if (close((teams + num)->fd[1]) == -1)
     {

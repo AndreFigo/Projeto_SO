@@ -17,6 +17,8 @@ void *car_func(void *p)
     print_debug(msg);
 
     //print_car_info(ind, team_num);
+    float fuel_2laps = (float)(ceil((double)data->distance / (cars + ind)->speed) * (cars + ind)->consumption * 2);
+    float fuel_4laps = 2 * fuel_2laps;
 
     while(1){
 
@@ -30,8 +32,7 @@ void *car_func(void *p)
         (cars + ind)->n_stops = 0;
         (cars + ind)->state = CORRIDA;
 
-        float fuel_2laps = (float)(ceil((double)data->distance / (cars + ind)->speed) * (cars + ind)->consumption * 2);
-        float fuel_4laps = 2 * fuel_2laps;
+        
 
         sem_wait(start_race);
         sprintf(msg, "carro %d entered race\n", ind);
@@ -109,7 +110,6 @@ void *car_func(void *p)
                 (cars + ind)->state = DESISTENCIA;
                 sprintf(msg, "carro %d just gave up\n", ind);
                 print_debug(msg);
-                pthread_cond_broadcast(&data->all_finished);
                 // comunicate
                 communicate_status_changes(team_num, ind, SEGURANCA, DESISTENCIA);
 
@@ -147,8 +147,8 @@ void *car_func(void *p)
                     communicate_status_changes(team_num, ind, last, TERMINADO);
                     continue;
                 }
-                pthread_mutex_unlock(&data->interupt_mutex);
                 pthread_mutex_unlock(&data->forced_stop_mutex);
+                pthread_mutex_unlock(&data->interupt_mutex);
                 dist_curr -= data->distance;
 
                 sem_wait(&(teams + team_num)->mutex_box_state);
@@ -176,16 +176,16 @@ void *car_func(void *p)
 
         sem_wait(end_race);
 
-        pthread_mutex_lock(&data->forced_stop_mutex);
         pthread_mutex_lock(&data->interupt_mutex);
+        pthread_mutex_lock(&data->forced_stop_mutex);
 
         if (data->stop==0 && data->interupt==1){
-            pthread_mutex_unlock(&data->interupt_mutex);
             pthread_mutex_unlock(&data->forced_stop_mutex);
+            pthread_mutex_unlock(&data->interupt_mutex);
             continue;
         }
-        pthread_mutex_unlock(&data->interupt_mutex);
         pthread_mutex_unlock(&data->forced_stop_mutex);
+        pthread_mutex_unlock(&data->interupt_mutex);
         break;
         
 
@@ -230,7 +230,6 @@ void enter_safe_mode(int team_num, int ind, int *cur_speed, float *cur_cons)
 
         //print_debug("Communicated changes\n");
 
-        //unnamed pipe
     }
 }
 
@@ -239,7 +238,6 @@ void increment_cars_finished()
 
     pthread_mutex_lock(&data->finish_mutex);
     data->cars_finished += 1;
-    pthread_cond_broadcast(&data->all_finished);
     pthread_mutex_unlock(&data->finish_mutex);
 }
 
@@ -293,10 +291,11 @@ void enter_box(int team_num, int ind, int last)
 
 void communicate_status_changes(int team, int ind, int last, int current)
 {
-    char estados[5][20] = {"CORRIDA", "SEGURANCA", "BOX", "DESISTENCIA", "TERMINADO"};
 
-    char msg[100];
-    sprintf(msg, "CARRO %d PASSOU DO MODO %s PARA O MODO %s\n", ind, estados[last], estados[current]);
+    state_change change;
+    change.current=current;
+    change.last=last;
+    change.ind=ind;
 
-    write((teams + team)->fd[1], msg, strlen(msg));
+    write((teams + team)->fd[1], &change, sizeof(state_change));
 }

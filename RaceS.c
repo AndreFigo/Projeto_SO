@@ -65,11 +65,11 @@ void sigint(int signo)
 
     //wait for everyone using cond variable
 
-
-    while(1){
-        app_log("LEL\n");
-        if (sem_wait(end_simulator)==-1){
-            if (errno==EINTR)
+    while (1)
+    {
+        if (sem_wait(end_simulator) == -1)
+        {
+            if (errno == EINTR)
                 continue;
         }
         break;
@@ -85,10 +85,6 @@ void sigint(int signo)
     }
 
     pthread_mutex_unlock(&data->finish_mutex);*/
-
-    data->on_going = 0; //neeeeeeed protection
-
-    //to do
 
     // wait for child processes
     for (int i = 0; i < 2; i++)
@@ -121,26 +117,32 @@ void sigtstp(int signo)
     sem_post(ended_copy);
     print_debug("Ended copy\n");
 
+    print_stats(copy, n_malf);
+
+    free(copy);
+}
+
+void print_stats(car *c, int n_malf)
+{
+
     int seen[5];
     for (int j = 0; j < 5; j++)
         seen[j] = -1;
     int ind;
 
-    //char * tabela= (char*) malloc( sizeof(char)* MAXTABELA);
-    char tabela[3000] = "\nESTATISTICAS\n";
     char separator[50] = "----------------------------------------\n";
-    char stats[7][100];
-    strcat(tabela, "\nESTATISTICAS\n");
+    char stats[7][MAXTAMLINE] = {0};
+    //strcat(tabela, "\nESTATISTICAS\n");
 
     for (int j = 0; j < 5; j++)
     {
-        ind = max_distance(copy, data->max_car * data->n_teams, seen, 5);
-        seen[j]= ind;
+        ind = max_distance(c, data->max_car * data->n_teams, seen, 5);
+        seen[j] = ind;
         if (ind > -1)
         {
             // escrever os dados da equipa ind
-            sprintf(stats[j], "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->distance, (cars + ind)->n_stops);
-            strncat(tabela, stats[j],100);
+            sprintf(stats[j], "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+            //strncat(tabela, stats[j],100);
         }
         else
         {
@@ -150,31 +152,35 @@ void sigtstp(int signo)
     }
 
     // escrever o pior
-    ind = last_place(copy, data->max_car * data->n_teams);
-    sprintf(stats[5], "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->distance, (cars + ind)->n_stops);
-    //strncat(tabela, separator,50);
-    strncat(tabela, stats[5],100);
+    strncat(stats[4], separator, 50);
+
+    ind = last_place(c, data->max_car * data->n_teams);
+    sprintf(stats[5], "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+    strncat(stats[5], separator, 50);
 
     //escrevr os stops
     int n_stops = 0, on_track = 0;
-    on_track_and_total_stops(&n_stops, &on_track, copy, data->max_car * data->n_teams);
+    on_track_and_total_stops(&n_stops, &on_track, c, data->max_car * data->n_teams);
     sprintf(stats[6], "Total de paragens: %d\nTotal de avarias: %d\nEm pista: %d\n", n_stops, n_malf, on_track);
-    //sprintf(stats[6], "Total de paragens: \n");
 
-    //strncat(tabela, separator,50);
-    strncat(tabela, stats[6],100);
-    //strncat(tabela, separator,50);
+    strncat(stats[6], separator, 50);
 
-    app_log(tabela);
+    pthread_mutex_lock(&data->log_mutex);
+    time_t now;
+    time(&now);
+    struct tm *timeinfo = localtime(&now);
 
-    //free(tabela);
-    free(copy);
+    char date[20];
+    sprintf(date, "%d:%d:%d ESTATISTICAS\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    write(1, date, strlen(date));
+    write(data->logfile, date, strlen(date));
 
-    //top 5
-    //last place
-    // total avarias
-    //total abastecimentos
-    // numero de carros em pista
+    for (int i = 0; i < 7; ++i)
+    {
+        write(1, stats[i], strlen(stats[i]));
+        write(data->logfile, stats[i], strlen(stats[i]));
+    }
+    pthread_mutex_unlock(&data->log_mutex);
 }
 
 void on_track_and_total_stops(int *n_stops, int *on_track, car *copy, int len)
@@ -198,7 +204,7 @@ int last_place(car *copy, int len)
     int ind_min = -1;
     for (int i = 0; i < len; i++)
     {
-        if ((copy + i)->distance < min && (copy + i)->num !=-1)
+        if ((copy + i)->distance < min && (copy + i)->num != -1)
         {
             min = (copy + i)->distance;
             ind_min = i;
@@ -212,8 +218,8 @@ int max_distance(car *copy, int len, int *seen, int len2)
     int max = -1, used, ind_max = -1;
 
     for (int i = 0; i < len; i++)
-    {   
-        if ((copy + i)->num==-1)
+    {
+        if ((copy + i)->num == -1)
             continue;
         used = 0;
         for (int j = 0; j < len2; j++)
@@ -259,7 +265,6 @@ void init_sem()
         perror("ERROR: Failed to create semaphore\n");
         exit(1);
     }
-
 
     sem_unlink("BEG_COPY");
     if ((begin_copy = sem_open("BEG_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
@@ -376,13 +381,13 @@ void init_sem()
         perror("Problemas a inicializar o mutex log_mutex\n");
         exit(1);
     }
-
-    /* Initialize condition variables. */
-    if (pthread_cond_init(&(data->all_finished), &(attrcondv)) != 0)
+    if (pthread_mutex_init(&(data->on_going_mutex), &(attrmutex)) != 0)
     {
-        perror("Problemas a inicializar a variavel de condicao all_finished\n");
+        perror("Problemas a inicializar o mutex new_tunit_mutex\n");
         exit(1);
     }
+
+    /* Initialize condition variables. */
     if (pthread_cond_init(&(data->new_tunit), &(attrcondv)) != 0)
     {
         perror("Problemas a inicializar a variavel de condicao new_tunit\n");
@@ -435,8 +440,7 @@ void init(float *config)
     data->max_car = max_car;
     data->total_cars = 0;
     data->stats = 0;
-    data->stop=0;
-    
+    data->stop = 0;
 
     free(config);
 
@@ -541,7 +545,6 @@ void terminate_sem()
         exit(1);
     }
 
-
     for (int i = 0; i < data->n_teams; ++i)
     {
         if (sem_destroy(&((teams + i)->car_ready)) == -1)
@@ -619,6 +622,11 @@ void terminate_sem()
         perror("ERROR: Failed to destroy log_mutex mutex\n");
         exit(1);
     }
+    if (pthread_mutex_destroy(&(data->on_going_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy log_mutex mutex\n");
+        exit(1);
+    }
 
     /* Destroying mutex attribute */
     if (pthread_mutexattr_destroy(&attrmutex) != 0)
@@ -628,11 +636,6 @@ void terminate_sem()
     }
 
     /* Destroying condition variables */
-    if (pthread_cond_destroy(&(data->all_finished)) != 0)
-    {
-        perror("ERROR: Failed to destroy condition variable all_finished\n");
-        exit(1);
-    }
     if (pthread_cond_destroy(&(data->new_tunit)) != 0)
     {
         perror("ERROR: Failed to destroy condition variable new_tunit\n");
@@ -744,11 +747,12 @@ int main()
     init_signal();
 
     // sinais
-    while(1){
-        app_log("LOL\n");
-        if (sem_wait(end_simulator)==-1){
+    while (1)
+    {
+        if (sem_wait(end_simulator) == -1)
+        {
             app_log("SAIU SEMAFORO\n");
-            if (errno==EINTR)
+            if (errno == EINTR)
                 continue;
         }
         break;
@@ -764,10 +768,6 @@ int main()
     }
 
     pthread_mutex_unlock(&data->finish_mutex);*/
-
-    print_debug("WEEEEEEE\n");
-
-    data->on_going = 0; //neeeeeeed protection
 
     for (int i = 0; i < 2; ++i)
         wait(NULL);
