@@ -35,7 +35,7 @@
 #define MAXERRORMSG 200
 #define MAXLOADMSG 200
 #define MAXWARNINGMSG 200
-#define MAXTABELA 2000
+#define MAXTABELA 5000
 
 #define CORRIDA 0
 #define SEGURANCA 1
@@ -90,9 +90,9 @@ typedef struct
 
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
-    int on_going, stop, n_malfuncs, stats, on_track;
+    int on_going, stop, interupt, n_malfuncs, stats, on_track;
     float fuel_tank;
-    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex, check_malf_mutex, forced_stop_mutex, log_mutex;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex, check_malf_mutex, forced_stop_mutex, interupt_mutex, log_mutex;
     pthread_cond_t all_finished, new_tunit, end_tunit;
 
 } info_struct;
@@ -120,8 +120,6 @@ int add_car(char *line);
 int verify_all_teams();
 
 void terminate();
-
-void terminate_sem();
 
 void read_commands();
 
@@ -169,6 +167,8 @@ int max_file();
 
 void increment_cars_finished();
 
+void sigusr1(int signo);
+
 /* ================================= VARIAVEIS GLOBAIS ================================= */
 
 info_struct *data;
@@ -181,8 +181,8 @@ int logfile, fd_named_pipe;
 pthread_mutexattr_t attrmutex;
 pthread_condattr_t attrcondv;
 //mudar forced_stop
-sem_t *start_race, *begin_copy, *ended_copy;
-struct sigaction print_est, finish_race;
+sem_t *start_race, *begin_copy, *ended_copy, *end_race, *end_simulator;
+struct sigaction print_est, finish_race, interupt_race;
 sigset_t block_set_est, block_set_fin;
 
 #endif

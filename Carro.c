@@ -18,153 +18,180 @@ void *car_func(void *p)
 
     //print_car_info(ind, team_num);
 
-    //inicializacao do carro
+    while(1){
 
-    (cars + ind)->fuel = data->fuel_tank;
-    (cars + ind)->distance = 0;
-    (cars + ind)->malfunc = 0;
-    (cars + ind)->laps_done = 0;
-    (cars + ind)->n_stops = 0;
-    (cars + ind)->state = CORRIDA;
 
-    float fuel_2laps = (float)(ceil((double)data->distance / (cars + ind)->speed) * (cars + ind)->consumption * 2);
-    float fuel_4laps = 2 * fuel_2laps;
+        //inicializacao do carro
 
-    sem_wait(start_race);
-    sprintf(msg, "carro %d entered race\n", ind);
-    print_debug(msg);
-    int elapsed = 0, dist_curr = 0, current_speed = (cars + ind)->speed;
-    float current_cons = (cars + ind)->consumption;
-    warning_message warning;
+        (cars + ind)->fuel = data->fuel_tank;
+        (cars + ind)->distance = 0;
+        (cars + ind)->malfunc = 0;
+        (cars + ind)->laps_done = 0;
+        (cars + ind)->n_stops = 0;
+        (cars + ind)->state = CORRIDA;
 
-    while (1)
-    {
-        //inform that you are ready to wait for a tunit to pass
-        sprintf(msg, "carro %d waiting for time unit (atual %d)\n", ind, elapsed);
+        float fuel_2laps = (float)(ceil((double)data->distance / (cars + ind)->speed) * (cars + ind)->consumption * 2);
+        float fuel_4laps = 2 * fuel_2laps;
+
+        sem_wait(start_race);
+        sprintf(msg, "carro %d entered race\n", ind);
         print_debug(msg);
-        pthread_mutex_lock(&data->end_tunit_mutex);
+        int elapsed = 0, dist_curr = 0, current_speed = (cars + ind)->speed;
+        float current_cons = (cars + ind)->consumption;
+        warning_message warning;
 
-        data->cars_ended_tunit += 1;
-        pthread_cond_signal(&data->end_tunit);
-
-        pthread_mutex_unlock(&data->end_tunit_mutex);
-
-        if ((cars + ind)->state == TERMINADO || (cars + ind)->state == DESISTENCIA)
-            break;
-
-        // wait for a tunit to pass
-        pthread_mutex_lock(&data->new_tunit_mutex);
-        while (elapsed == data->tunits_passed)
+        while (1)
         {
-            pthread_cond_wait(&data->new_tunit, &data->new_tunit_mutex);
-        }
-        elapsed += 1;
-        pthread_mutex_unlock(&data->new_tunit_mutex);
-        sprintf(msg, "carro %d just started a new tunit\n", ind);
-        print_debug(msg);
-
-        //check malfunctions
-
-        /*if (msgrcv(mqid, &warning, sizeof(warning_message) - sizeof(long), ind, IPC_NOWAIT) != -1)
-        {
-            //malfunc
-            (cars + ind)->malfunc = 1;
-            enter_safe_mode(team_num, ind, &current_speed, &current_cons);
-            sprintf(msg, "carro %d just had a malfunction\n", ind);
-            app_log(msg);
-        }*/
-
-        if (elapsed % data->u_time_malfunc == 0)
-        {
-            sprintf(msg, "carro %d checking malfunction\n", ind);
+            //inform that you are ready to wait for a tunit to pass
+            sprintf(msg, "carro %d waiting for time unit (atual %d)\n", ind, elapsed);
             print_debug(msg);
-            pthread_mutex_lock(&(data->check_malf_mutex));
+            pthread_mutex_lock(&data->end_tunit_mutex);
 
-            if (msgrcv(mqid, &warning, sizeof(warning_message) - sizeof(long), ind + 1, IPC_NOWAIT) != -1)
+            data->cars_ended_tunit += 1;
+            pthread_cond_signal(&data->end_tunit);
+
+            pthread_mutex_unlock(&data->end_tunit_mutex);
+
+            if ((cars + ind)->state == TERMINADO || (cars + ind)->state == DESISTENCIA)
+                break;
+
+            // wait for a tunit to pass
+            pthread_mutex_lock(&data->new_tunit_mutex);
+            while (elapsed == data->tunits_passed)
+            {
+                pthread_cond_wait(&data->new_tunit, &data->new_tunit_mutex);
+            }
+            elapsed += 1;
+            pthread_mutex_unlock(&data->new_tunit_mutex);
+            sprintf(msg, "carro %d just started a new tunit\n", ind);
+            print_debug(msg);
+
+            //check malfunctions
+
+            /*if (msgrcv(mqid, &warning, sizeof(warning_message) - sizeof(long), ind, IPC_NOWAIT) != -1)
             {
                 //malfunc
                 (cars + ind)->malfunc = 1;
                 enter_safe_mode(team_num, ind, &current_speed, &current_cons);
                 sprintf(msg, "carro %d just had a malfunction\n", ind);
                 app_log(msg);
-            }
-            //perror("Na message queue");
-            else if (errno == ENOMSG)
+            }*/
+
+            if (elapsed % data->u_time_malfunc == 0)
             {
+                sprintf(msg, "carro %d checking malfunction\n", ind);
+                print_debug(msg);
+                pthread_mutex_lock(&(data->check_malf_mutex));
+
+                if (msgrcv(mqid, &warning, sizeof(warning_message) - sizeof(long), ind + 1, IPC_NOWAIT) != -1)
+                {
+                    //malfunc
+                    (cars + ind)->malfunc = 1;
+                    enter_safe_mode(team_num, ind, &current_speed, &current_cons);
+                    sprintf(msg, "carro %d just had a malfunction\n", ind);
+                    app_log(msg);
+                }
+                //perror("Na message queue");
+                else if (errno == ENOMSG)
+                {
+                }
+
+                pthread_mutex_unlock(&(data->check_malf_mutex));
             }
+            //sprintf(msg, "carro %d malf seen\n", ind);
+            //print_debug(msg);
 
-            pthread_mutex_unlock(&(data->check_malf_mutex));
-        }
-        //sprintf(msg, "carro %d malf seen\n", ind);
-        //print_debug(msg);
+            //update fuel
+            (cars + ind)->fuel -= current_cons;
 
-        //update fuel
-        (cars + ind)->fuel -= current_cons;
-
-        if ((cars + ind)->fuel < 0)
-        {
-            (cars + ind)->state = DESISTENCIA;
-            sprintf(msg, "carro %d just gave up\n", ind);
-            print_debug(msg);
-            pthread_cond_broadcast(&data->all_finished);
-            // comunicate
-            communicate_status_changes(team_num, ind, SEGURANCA, DESISTENCIA);
-
-            increment_cars_finished();
-
-            continue;
-        }
-
-        //sprintf(msg, "carro %d fuel seen %f\n", ind, fuel_2laps);
-        //print_debug(msg);
-        if ((cars + ind)->fuel < fuel_2laps)
-            enter_safe_mode(team_num, ind, &current_speed, &current_cons);
-
-        //sprintf(msg, "carro %d distance begin\n", ind);
-        //print_debug(msg);
-        //update distance
-        (cars + ind)->distance += current_speed;
-        dist_curr += current_speed;
-
-        if (dist_curr >= data->distance)
-        {
-            print_debug("Completed one more lap\n");
-            (cars + ind)->laps_done += 1;
-            pthread_mutex_lock(&data->forced_stop_mutex);
-            if ((cars + ind)->laps_done == data->n_laps || data->stop == 1)
+            if ((cars + ind)->fuel < 0)
             {
-                pthread_mutex_unlock(&data->forced_stop_mutex);
-                int last = (cars + ind)->state;
-                (cars + ind)->state = TERMINADO;
-                communicate_status_changes(team_num, ind, last, TERMINADO);
+                (cars + ind)->state = DESISTENCIA;
+                sprintf(msg, "carro %d just gave up\n", ind);
+                print_debug(msg);
+                pthread_cond_broadcast(&data->all_finished);
+                // comunicate
+                communicate_status_changes(team_num, ind, SEGURANCA, DESISTENCIA);
+
                 increment_cars_finished();
+
                 continue;
             }
-            pthread_mutex_unlock(&data->forced_stop_mutex);
-            dist_curr -= data->distance;
 
-            sem_wait(&(teams + team_num)->mutex_box_state);
+            //sprintf(msg, "carro %d fuel seen %f\n", ind, fuel_2laps);
+            //print_debug(msg);
+            if ((cars + ind)->fuel < fuel_2laps)
+                enter_safe_mode(team_num, ind, &current_speed, &current_cons);
 
-            if (((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state < OCUPADO) || ((cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state == LIVRE))
+            //sprintf(msg, "carro %d distance begin\n", ind);
+            //print_debug(msg);
+            //update distance
+            (cars + ind)->distance += current_speed;
+            dist_curr += current_speed;
+
+            if (dist_curr >= data->distance)
             {
-                int last = CORRIDA;
-                if ((cars + ind)->state == SEGURANCA)
-                    last = SEGURANCA;
-                sem_post(&(teams + team_num)->mutex_box_state);
+                print_debug("Completed one more lap\n");
+                (cars + ind)->laps_done += 1;
+                pthread_mutex_lock(&data->interupt_mutex);
+                pthread_mutex_lock(&data->forced_stop_mutex);
 
-                enter_box(team_num, ind, last);
-                elapsed += (cars + ind)->box_time;
+                if ((cars + ind)->laps_done == data->n_laps || data->stop == 1|| data->interupt==1)
+                {
+                    pthread_mutex_unlock(&data->forced_stop_mutex);
+                    pthread_mutex_unlock(&data->interupt_mutex);
+
+                    int last = (cars + ind)->state;
+                    (cars + ind)->state = TERMINADO;
+                    increment_cars_finished();
+                    communicate_status_changes(team_num, ind, last, TERMINADO);
+                    continue;
+                }
+                pthread_mutex_unlock(&data->interupt_mutex);
+                pthread_mutex_unlock(&data->forced_stop_mutex);
+                dist_curr -= data->distance;
+
+                sem_wait(&(teams + team_num)->mutex_box_state);
+
+                if (((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state < OCUPADO) || ((cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state == LIVRE))
+                {
+                    int last = CORRIDA;
+                    if ((cars + ind)->state == SEGURANCA)
+                        last = SEGURANCA;
+                    sem_post(&(teams + team_num)->mutex_box_state);
+
+                    enter_box(team_num, ind, last);
+                    elapsed += (cars + ind)->box_time;
+                }
+                else
+                    sem_post(&(teams + team_num)->mutex_box_state);
             }
-            else
-                sem_post(&(teams + team_num)->mutex_box_state);
-        }
-        //sprintf(msg, "carro %d distance seen\n", ind);
-        //print_debug(msg);
+            //sprintf(msg, "carro %d distance seen\n", ind);
+            //print_debug(msg);
 
-        //check box
-        //check status
-        //communicate status changes
+            //check box
+            //check status
+            //communicate status changes
+        }
+
+        sem_wait(end_race);
+
+        pthread_mutex_lock(&data->forced_stop_mutex);
+        pthread_mutex_lock(&data->interupt_mutex);
+
+        if (data->stop==0 && data->interupt==1){
+            pthread_mutex_unlock(&data->interupt_mutex);
+            pthread_mutex_unlock(&data->forced_stop_mutex);
+            continue;
+        }
+        pthread_mutex_unlock(&data->interupt_mutex);
+        pthread_mutex_unlock(&data->forced_stop_mutex);
+        break;
+        
+
+
     }
+
 
     //sleep(1);
 
@@ -256,8 +283,11 @@ void enter_box(int team_num, int ind, int last)
     (cars + ind)->malfunc = 0;
 
     //car can leave
-    (cars + ind)->state = CORRIDA;
-    communicate_status_changes(team_num, ind, BOX, CORRIDA);
+    if ((cars + ind)->state == BOX){
+        (cars + ind)->state = CORRIDA;
+        communicate_status_changes(team_num, ind, BOX, CORRIDA);
+
+    }
     //communicate status change
 }
 

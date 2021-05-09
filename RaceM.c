@@ -8,18 +8,30 @@
 void Race_manager(int n_equipas)
 {
 
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
     print_debug("race manager!\n");
 
     for (int i = 0; i < n_equipas; ++i)
     {
         if (fork() == 0)
         {
-            close((teams + i)->fd[0]);
             Team_manager(i);
             exit(0);
         }
-        close((teams + i)->fd[1]);
     }
+
+    for (int i = 0; i < n_equipas; ++i)
+    {
+        if (close((teams + i)->fd[1]) == -1)
+        {   
+            print_debug("1\n");
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+    }
+
 
     if ((fd_named_pipe = open(PIPE_NAME, O_RDWR)) < 0)
     {
@@ -31,6 +43,11 @@ void Race_manager(int n_equipas)
     data->on_going = 1;
     print_debug("Primeiros comandos totalmente lidos\n");
 
+    sigemptyset(&interupt_race.sa_mask);
+    interupt_race.sa_flags = 0;
+    interupt_race.sa_handler = &sigusr1;
+    sigaction(SIGUSR1, &interupt_race, NULL);
+
     //read from all pipes
     fd_set read_set;
     print_debug("Listening from all pipes\n");
@@ -39,6 +56,8 @@ void Race_manager(int n_equipas)
     char log_msg[MAXERRORMSG];
 
     int max_fd= max_file();
+
+
     while (1)
     {   
         if (leave)
@@ -124,15 +143,58 @@ void Race_manager(int n_equipas)
 
                         token = strtok(NULL, "\n");
                     }
+                    break;
                 }
             }
+        }else{
+            if (errno==EINTR)
+                continue;
         }
     }
 
-    //sleep(1);
+    //ignore sigusr1
+    interupt_race.sa_handler = SIG_IGN;
+    sigaction(SIGUSR1, &interupt_race, NULL);
+
+
+
     for (int i = 0; i < n_equipas; ++i)
         wait(NULL);
+
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        if (close((teams + i)->fd[0]) == -1)
+        {
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+    }
+
+    if (close(fd_named_pipe) == -1)
+    {
+        perror("ERROR: Failed to close unnamed pipe\n");
+        exit(1);
+    }
+
+
+    
     print_debug("Saiu race manager\n");
+}
+
+void sigusr1(int signo){
+
+    pthread_mutex_lock(&data->interupt_mutex);
+    data->interupt=1;
+    pthread_mutex_unlock(&data->interupt_mutex);
+
+    app_log("SIGUSR1 call, interupting race\n");
+
+    sem_wait(end_race);
+
+
+
+
+
 }
 
 int max_file(){

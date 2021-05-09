@@ -8,6 +8,25 @@
 void Team_manager(int num)
 {
 
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        if (i!= num && close((teams + i)->fd[1]) == -1)
+        {
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+        if ( close((teams + i)->fd[0]) == -1)
+        {
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+    }
+
+
+
     info *ids = (info *)malloc(sizeof(info) * data->max_car);
     (teams + num)->box_state = LIVRE;
     char msg[MAXTAMLINE];
@@ -60,27 +79,28 @@ void Team_manager(int num)
         }
 
         (cars + ind_car)->fuel = data->fuel_tank;
-        (cars + ind_car)->box_time = time_box;
+        (cars + ind_car)->box_time = 0;
 
         for (int i = 0; i < time_box; i++)
         {
-            print_debug("AAAAAAAAAAAAAAAAAAAAAA\n");
+            pthread_mutex_lock(&data->forced_stop_mutex);
+            if (data->stop == 1)
+            {
+                pthread_mutex_unlock(&data->forced_stop_mutex);
+                (cars + ind_car)->state = TERMINADO;
+                increment_cars_finished();
+                communicate_status_changes(num, ind_car, BOX, TERMINADO);
+                break;
+            }
+            pthread_mutex_unlock(&data->forced_stop_mutex);
+
+            print_debug("BOX just passed another second\nAAAAAAAAAAAAAAAAAAAAA\n");
             pthread_mutex_lock(&data->end_tunit_mutex);
             data->cars_ended_tunit += 1;
             pthread_cond_signal(&data->end_tunit);
 
             pthread_mutex_unlock(&data->end_tunit_mutex);
 
-                        pthread_mutex_lock(&data->forced_stop_mutex);
-            if (data->stop == 1)
-            {
-                pthread_mutex_unlock(&data->forced_stop_mutex);
-                (cars + ind_car)->state = TERMINADO;
-                communicate_status_changes(num, ind_car, BOX, TERMINADO);
-                increment_cars_finished();
-                continue;
-            }
-            pthread_mutex_unlock(&data->forced_stop_mutex);
 
             // wait for a tunit to pass
             pthread_mutex_lock(&data->new_tunit_mutex);
@@ -90,6 +110,7 @@ void Team_manager(int num)
             }
             elapsed += 1;
             pthread_mutex_unlock(&data->new_tunit_mutex);
+            (cars + ind_car)->box_time += 1;
         }
 
         sem_wait(&(teams + num)->mutex_box_state);
@@ -109,6 +130,12 @@ void Team_manager(int num)
     free(ids);
     for (int i = 0; i < (teams + num)->n_cars; ++i)
         pthread_join((cars + num * data->n_teams + i)->tid, NULL);
+
+    if (close((teams + num)->fd[1]) == -1)
+    {
+        perror("ERROR: Failed to close unnamed pipe\n");
+        exit(1);
+    }
 
     sprintf(msg, "saiu team %d\n", num);
     print_debug(msg);

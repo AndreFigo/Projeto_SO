@@ -65,7 +65,17 @@ void sigint(int signo)
 
     //wait for everyone using cond variable
 
-    pthread_mutex_lock(&data->finish_mutex);
+
+    while(1){
+        app_log("LEL\n");
+        if (sem_wait(end_simulator)==-1){
+            if (errno==EINTR)
+                continue;
+        }
+        break;
+    }
+
+    /*pthread_mutex_lock(&data->finish_mutex);
 
     while (data->cars_finished != data->total_cars)
     {
@@ -74,7 +84,7 @@ void sigint(int signo)
         pthread_cond_wait(&data->all_finished, &data->finish_mutex);
     }
 
-    pthread_mutex_unlock(&data->finish_mutex);
+    pthread_mutex_unlock(&data->finish_mutex);*/
 
     data->on_going = 0; //neeeeeeed protection
 
@@ -86,6 +96,7 @@ void sigint(int signo)
 
     app_log("SIMULATOR CLOSING\n");
     terminate();
+    exit(0);
 }
 
 void sigtstp(int signo)
@@ -115,19 +126,21 @@ void sigtstp(int signo)
         seen[j] = -1;
     int ind;
 
-    char tabela[MAXTABELA] = "\nESTATISTICAS\n";
-    char separator[] = "----------------------------------------\n";
-    char stats[MAXTAMLINE];
+    //char * tabela= (char*) malloc( sizeof(char)* MAXTABELA);
+    char tabela[3000] = "\nESTATISTICAS\n";
+    char separator[50] = "----------------------------------------\n";
+    char stats[7][100];
+    strcat(tabela, "\nESTATISTICAS\n");
 
     for (int j = 0; j < 5; j++)
     {
         ind = max_distance(copy, data->max_car * data->n_teams, seen, 5);
-
+        seen[j]= ind;
         if (ind > -1)
         {
             // escrever os dados da equipa ind
-            sprintf(stats, "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
-            strcat(tabela, stats);
+            sprintf(stats[j], "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->distance, (cars + ind)->n_stops);
+            strncat(tabela, stats[j],100);
         }
         else
         {
@@ -138,20 +151,23 @@ void sigtstp(int signo)
 
     // escrever o pior
     ind = last_place(copy, data->max_car * data->n_teams);
-    sprintf(stats, "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
-    strcat(tabela, separator);
-    strcat(tabela, stats);
+    sprintf(stats[5], "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->distance, (cars + ind)->n_stops);
+    //strncat(tabela, separator,50);
+    strncat(tabela, stats[5],100);
 
     //escrevr os stops
     int n_stops = 0, on_track = 0;
     on_track_and_total_stops(&n_stops, &on_track, copy, data->max_car * data->n_teams);
-    sprintf(stats, "Total de paragens: %d\nTotal de avarias: %d\nEm pista: %d\n", n_stops, n_malf, on_track);
-    strcat(tabela, separator);
-    strcat(tabela, stats);
-    strcat(tabela, separator);
+    sprintf(stats[6], "Total de paragens: %d\nTotal de avarias: %d\nEm pista: %d\n", n_stops, n_malf, on_track);
+    //sprintf(stats[6], "Total de paragens: \n");
+
+    //strncat(tabela, separator,50);
+    strncat(tabela, stats[6],100);
+    //strncat(tabela, separator,50);
 
     app_log(tabela);
 
+    //free(tabela);
     free(copy);
 
     //top 5
@@ -182,7 +198,7 @@ int last_place(car *copy, int len)
     int ind_min = -1;
     for (int i = 0; i < len; i++)
     {
-        if ((copy + i)->distance < min)
+        if ((copy + i)->distance < min && (copy + i)->num !=-1)
         {
             min = (copy + i)->distance;
             ind_min = i;
@@ -196,7 +212,9 @@ int max_distance(car *copy, int len, int *seen, int len2)
     int max = -1, used, ind_max = -1;
 
     for (int i = 0; i < len; i++)
-    {
+    {   
+        if ((copy + i)->num==-1)
+            continue;
         used = 0;
         for (int j = 0; j < len2; j++)
         {
@@ -227,6 +245,21 @@ void init_sem()
         perror("ERROR: Failed to create semaphore\n");
         exit(1);
     }
+
+    sem_unlink("END");
+    if ((end_race = sem_open("END", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
+    sem_unlink("END_SIM");
+    if ((end_simulator = sem_open("END_SIM", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
 
     sem_unlink("BEG_COPY");
     if ((begin_copy = sem_open("BEG_COPY", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
@@ -333,6 +366,11 @@ void init_sem()
         perror("Problemas a inicializar o mutex forced_stop_mutex\n");
         exit(1);
     }
+    if (pthread_mutex_init(&(data->interupt_mutex), &(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o mutex interupt_mutex\n");
+        exit(1);
+    }
     if (pthread_mutex_init(&(data->log_mutex), &(attrmutex)) != 0)
     {
         perror("Problemas a inicializar o mutex log_mutex\n");
@@ -396,11 +434,9 @@ void init(float *config)
     data->n_teams = n_teams;
     data->max_car = max_car;
     data->total_cars = 0;
-    data->cars_finished = 0;
-    data->cars_ended_tunit = 0;
-    data->tunits_passed = 0;
-    data->n_malfuncs = 0;
     data->stats = 0;
+    data->stop=0;
+    
 
     free(config);
 
@@ -461,13 +497,7 @@ void ignore_signals()
 
 void init_signal()
 {
-
-    sigemptyset(&print_est.sa_mask);
-    print_est.sa_flags = 0;
     print_est.sa_handler = &sigtstp;
-
-    sigemptyset(&finish_race.sa_mask);
-    finish_race.sa_flags = 0;
     finish_race.sa_handler = &sigint;
 
     sigaction(SIGINT, &finish_race, NULL);
@@ -477,27 +507,40 @@ void init_signal()
 void terminate_sem()
 {
 
-    sem_unlink("LOG_MUTEX");
+    sem_unlink("START");
     if (sem_close(start_race) == -1)
     {
-        perror("ERROR: Failed to close semaphore\n");
+        perror("ERROR: Failed to close semaphore START\n");
         exit(1);
     }
-    sem_unlink("START");
+    sem_unlink("END");
+    if (sem_close(end_race) == -1)
+    {
+        perror("ERROR: Failed to close semaphore END\n");
+        exit(1);
+    }
 
+    sem_unlink("END_SIM");
+    if (sem_close(end_simulator) == -1)
+    {
+        perror("ERROR: Failed to close semaphore END_SIM\n");
+        exit(1);
+    }
+
+    sem_unlink("BEG_COPY");
     if (sem_close(begin_copy) == -1)
     {
-        perror("ERROR: Failed to close semaphore\n");
+        perror("ERROR: Failed to close semaphore BEG_COPY\n");
         exit(1);
     }
-    sem_unlink("BEG_COPY");
 
+    sem_unlink("END_COPY");
     if (sem_close(ended_copy) == -1)
     {
-        perror("ERROR: Failed to close semaphore\n");
+        perror("ERROR: Failed to close semaphore END_COPY\n");
         exit(1);
     }
-    sem_unlink("END_COPY");
+
 
     for (int i = 0; i < data->n_teams; ++i)
     {
@@ -562,6 +605,11 @@ void terminate_sem()
         exit(1);
     }
     if (pthread_mutex_destroy(&(data->forced_stop_mutex)) != 0)
+    {
+        perror("ERROR: Failed to destroy forced_stop_mutex mutex\n");
+        exit(1);
+    }
+    if (pthread_mutex_destroy(&(data->interupt_mutex)) != 0)
     {
         perror("ERROR: Failed to destroy forced_stop_mutex mutex\n");
         exit(1);
@@ -636,21 +684,6 @@ void terminate()
         exit(1);
     }
 
-    /* Closing unnamed pipes */
-    for (int i = 0; i < data->n_teams; ++i)
-    {
-        if (close((teams + i)->fd[0]) == -1)
-        {
-            perror("ERROR: Failed to close unnamed pipe\n");
-            exit(1);
-        }
-        if (close((teams + i)->fd[1] == -1))
-        {
-            perror("ERROR: Failed to close unnamed pipe\n");
-            exit(1);
-        }
-    }
-
     /* Destroying Message Queue */
     if (msgctl(mqid, IPC_RMID, 0) == -1)
     {
@@ -685,8 +718,18 @@ int main()
 
     for (int i = 0; i < data->n_teams; ++i)
     {
-        close((teams + i)->fd[0]);
-        close((teams + i)->fd[1]);
+        if (close((teams + i)->fd[0]) == -1)
+        {
+            print_debug("2\n");
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
+        if (close((teams + i)->fd[1]) == -1)
+        {
+            printf("3, %d\n", i);
+            perror("ERROR: Failed to close unnamed pipe\n");
+            exit(1);
+        }
     }
 
     if (fork() == 0)
@@ -701,8 +744,17 @@ int main()
     init_signal();
 
     // sinais
+    while(1){
+        app_log("LOL\n");
+        if (sem_wait(end_simulator)==-1){
+            app_log("SAIU SEMAFORO\n");
+            if (errno==EINTR)
+                continue;
+        }
+        break;
+    }
 
-    pthread_mutex_lock(&data->finish_mutex);
+    /*pthread_mutex_lock(&data->finish_mutex);
 
     while (data->cars_finished != data->total_cars)
     {
@@ -711,7 +763,7 @@ int main()
         pthread_cond_wait(&data->all_finished, &data->finish_mutex);
     }
 
-    pthread_mutex_unlock(&data->finish_mutex);
+    pthread_mutex_unlock(&data->finish_mutex);*/
 
     print_debug("WEEEEEEE\n");
 
