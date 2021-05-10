@@ -131,7 +131,7 @@ void print_stats(car *c, int n_malf)
     int ind;
 
     char separator[50] = "----------------------------------------\n";
-    char stats[7][100] = {0};
+    char stats[7][200] = {0};
     //strcat(tabela, "\nESTATISTICAS\n");
 
     for (int j = 0; j < 5; j++)
@@ -141,7 +141,7 @@ void print_stats(car *c, int n_malf)
         if (ind > -1)
         {
             // escrever os dados da equipa ind
-            sprintf(stats[j], "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+            sprintf(stats[j], "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d, Distance-> %d, Time-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops, (cars + ind)->distance, (cars + ind)->time_passed);
             //strncat(tabela, stats[j],100);
         }
         else
@@ -155,7 +155,7 @@ void print_stats(car *c, int n_malf)
     strncat(stats[4], separator, 50);
 
     ind = last_place(c, data->max_car * data->n_teams);
-    sprintf(stats[5], "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops);
+    sprintf(stats[5], "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d, Distance-> %d, Time-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops, (cars + ind)->distance, (cars + ind)->time_passed);
     strncat(stats[5], separator, 50);
 
     //escrevr os stops
@@ -201,12 +201,13 @@ int last_place(car *copy, int len)
 {
 
     int min = data->distance * (data->n_laps + 1);
-    int ind_min = -1;
+    int ind_min = -1, max_time=-1;;
     for (int i = 0; i < len; i++)
     {
-        if ((copy + i)->distance < min && (copy + i)->num != -1)
+        if ( (copy + i)->num != -1  && ( (copy + i)->distance < min ||  ((copy + i)->distance==min  &&  (copy + i)->time_passed>max_time ) )  )
         {
             min = (copy + i)->distance;
+            max_time= (copy + i)->time_passed;
             ind_min = i;
         }
     }
@@ -215,7 +216,7 @@ int last_place(car *copy, int len)
 
 int max_distance(car *copy, int len, int *seen, int len2)
 {
-    int max = -1, used, ind_max = -1;
+    int max = -1, used, ind_max = -1, min_time=999999;
 
     for (int i = 0; i < len; i++)
     {
@@ -232,9 +233,10 @@ int max_distance(car *copy, int len, int *seen, int len2)
             if (seen[j] == -1)
                 break;
         }
-        if (!used && (copy + i)->distance > max)
+        if (!used &&( (copy + i)->distance > max || ((copy + i)->distance == max &&(copy + i)->time_passed < min_time ) ))
         {
             max = (copy + i)->distance;
+            min_time= (copy + i)->time_passed ;
             ind_max = i;
         }
     }
@@ -243,6 +245,31 @@ int max_distance(car *copy, int len, int *seen, int len2)
 
 void init_sem()
 {
+
+    /* Initialize attribute of mutex. */
+    if (pthread_mutexattr_init(&(attrmutex)) != 0)
+    {
+        perror("Problemas a inicializar o atributo do mutex\n");
+        exit(1);
+    }
+    if (pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED) != 0)
+    {
+        perror("Problemas ao partilhar mutex\n");
+        exit(1);
+    }
+
+    /* Initialize attribute of condition variable. */
+    if (pthread_condattr_init(&(attrcondv)) != 0)
+    {
+        perror("Problemas ao inicializar a variavel de condicao\n");
+        exit(1);
+    }
+    if (pthread_condattr_setpshared(&(attrcondv), PTHREAD_PROCESS_SHARED) != 0)
+    {
+        perror("Problemas ao partilhar a variavel de condicao\n");
+        exit(1);
+    }
+
     print_debug_no_sem("Criando os semaforos\n");
 
     sem_unlink("START");
@@ -300,48 +327,31 @@ void init_sem()
             exit(1);
         }
 
-        //mudar para mutex
-        if (sem_init(&((teams + i)->mutex_box_state), 1, 1) != 0)
+        if (pthread_mutex_init(&((teams + i)->mutex_box_state), &(attrmutex)) != 0)
         {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d mutex_box_state\n", i);
+            perror("Problemas a inicializar o mutex finish_mutex\n");
+            exit(1);
+        }
+
+        if (pthread_mutex_init(&((teams + i)->pipe_write_mutex), &(attrmutex)) != 0)
+        {
+            perror("Problemas a inicializar o mutex finish_mutex\n");
             exit(1);
         }
     }
 
 
     // mudar para mutex
-    for (int i = 0; i < data->n_teams * data->max_car; ++i)
-    {
-        if (sem_init(&((cars + i)->state_mutex), 1, 1) != 0)
+    /*for (int i = 0; i < data->n_teams * data->max_car; ++i)
+    {   
+        if (pthread_mutex_init(&((cars + i)->state_mutex), &(attrmutex)) != 0)
         {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d state_mutex\n", i);
+            perror("Problemas a inicializar o mutex finish_mutex\n");
             exit(1);
         }
-    }
+    }*/
 
-    /* Initialize attribute of mutex. */
-    if (pthread_mutexattr_init(&(attrmutex)) != 0)
-    {
-        perror("Problemas a inicializar o atributo do mutex\n");
-        exit(1);
-    }
-    if (pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED) != 0)
-    {
-        perror("Problemas ao partilhar mutex\n");
-        exit(1);
-    }
-
-    /* Initialize attribute of condition variable. */
-    if (pthread_condattr_init(&(attrcondv)) != 0)
-    {
-        perror("Problemas ao inicializar a variavel de condicao\n");
-        exit(1);
-    }
-    if (pthread_condattr_setpshared(&(attrcondv), PTHREAD_PROCESS_SHARED) != 0)
-    {
-        perror("Problemas ao partilhar a variavel de condicao\n");
-        exit(1);
-    }
+    
 
     /* Initialize mutex. */
     if (pthread_mutex_init(&(data->finish_mutex), &(attrmutex)) != 0)
@@ -567,22 +577,26 @@ void terminate_sem()
             perror("ERROR: Failed to destroy entered_box semaphore\n");
             exit(1);
         }
-
-        if (sem_destroy(&((teams + i)->mutex_box_state)) == -1)
+        if (pthread_mutex_destroy(&((teams + i)->mutex_box_state)) != 0)
         {
-            perror("ERROR: Failed to destroy mutex_box_state semaphore\n");
+            perror("ERROR: Failed to destroy mutex_box_state mutex\n");
+            exit(1);
+        }
+        if (pthread_mutex_destroy(&((teams + i)->pipe_write_mutex)) != 0)
+        {
+            perror("ERROR: Failed to destroy pipe_write_mutex mutex\n");
             exit(1);
         }
     }
-
+/*
     for (int i = 0; i < data->n_teams * data->max_car; ++i)
     {
-        if (sem_destroy(&((cars + i)->state_mutex)) == -1)
+        if (pthread_mutex_destroy(&((cars + i)->state_mutex)) != 0)
         {
-            fprintf(stderr, "Problemas a destruir o semaforo %d state_mutex\n", i);
+            perror("ERROR: Failed to destroy state_mutex mutex\n");
             exit(1);
         }
-    }
+    }*/
 
     /* Destroying mutexes */
     if (pthread_mutex_destroy(&(data->finish_mutex)) != 0)

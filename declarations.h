@@ -74,15 +74,14 @@ typedef struct
     pthread_t tid;
     //char equipa[MAXNOMEEQUIPA];
     int ind_team, num, speed, state, laps_done, distance, reliability, malfunc;
-    int n_stops, seconds_taken, last_state, box_time;
+    int n_stops, time_passed, box_time;
     float consumption, fuel;
-    sem_t state_mutex;
-    pthread_mutex_t n_stops_mutex;
 } car;
 
 typedef struct
 {
-    sem_t car_ready, entered_box, box_finished, mutex_box_state;
+    sem_t car_ready, entered_box, box_finished; 
+    pthread_mutex_t mutex_box_state, pipe_write_mutex;
     int box_state, n_cars, n_cars_seg_mode, ind_catual;
     char name[MAXNOMEEQUIPA];
     int fd[2];
@@ -90,13 +89,12 @@ typedef struct
 
 typedef struct
 {
-    time_t time;
-
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
     int on_going, stop, interupt, n_malfuncs, stats, on_track;
     float fuel_tank;
-    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex, check_malf_mutex, forced_stop_mutex, interupt_mutex, log_mutex, on_going_mutex;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex, check_malf_mutex;
+    pthread_mutex_t forced_stop_mutex, interupt_mutex, log_mutex, on_going_mutex;
     pthread_cond_t new_tunit, end_tunit;
 
 } info_struct;

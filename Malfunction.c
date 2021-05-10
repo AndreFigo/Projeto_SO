@@ -80,8 +80,7 @@ void Malfunction_manager(int t_avaria)
                 message.warning = 1;
                 for (int i = 0; i < data->n_teams * data->max_car; i++)
                 {
-                    // no need because it hasnt passed a second yet
-                    //sem_wait(&(cars+i)->state_mutex);
+                    // no need  for mutex because it hasnt passed a second yet
                     if ((cars + i)->num != -1 && (cars + i)->state < BOX && (cars + i)->malfunc ==0)
                     {   
                         // ind + 1 because mtype cant be zero
@@ -93,11 +92,10 @@ void Malfunction_manager(int t_avaria)
                         {
                             msgsnd(mqid, &message, sizeof(message) - sizeof(long), 0);
                             data->n_malfuncs++;
-                            sprintf(warning, "MALFUNCTION DETECTED in car number %d\n", i);
+                            sprintf(warning, "MALFUNCTION DETECTED in car number %d\n", (cars + i)->num);
                             app_log(warning);
                         }
                     }
-                    //sem_post(&(cars+i)->state_mutex);
                 }
             }
             print_debug("Malfunction ended new tunit\n");
@@ -118,6 +116,7 @@ void Malfunction_manager(int t_avaria)
 
             pthread_mutex_lock(& data->on_going_mutex);
             data->on_going=0;
+            usleep(0.1);
             app_log("RACE INTERRUPTED SUCCESFULLY. READY TO START AGAIN\n");
             pthread_mutex_unlock(& data->on_going_mutex);
             continue;

@@ -246,7 +246,7 @@ void print_status_changes(int ind, int last, int current)
     char estados[5][20] = {"CORRIDA", "SEGURANCA", "BOX", "DESISTENCIA", "TERMINADO"};
 
     char msg[200];
-    sprintf(msg, "CARRO %d PASSOU DO MODO %s PARA O MODO %s\n", ind, estados[last], estados[current]);
+    sprintf(msg, "CARRO %d PASSOU DO MODO %s PARA O MODO %s\n", (cars + ind)->num, estados[last], estados[current]);
 
     app_log(msg);
 }

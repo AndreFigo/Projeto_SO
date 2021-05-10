@@ -80,6 +80,7 @@ void Team_manager(int num)
 
         (cars + ind_car)->fuel = data->fuel_tank;
         (cars + ind_car)->box_time = 0;
+        (cars+ind_car)->distance= (cars+ind_car)->laps_done* data->distance;
 
         for (int i = 0; i < time_box; i++)
         {
@@ -89,6 +90,7 @@ void Team_manager(int num)
                 pthread_mutex_unlock(&data->forced_stop_mutex);
                 (cars + ind_car)->state = TERMINADO;
                 increment_cars_finished();
+                
                 communicate_status_changes(num, ind_car, BOX, TERMINADO);
                 break;
             }
@@ -113,14 +115,14 @@ void Team_manager(int num)
             (cars + ind_car)->box_time += 1;
         }
 
-        sem_wait(&(teams + num)->mutex_box_state);
+        pthread_mutex_lock(&(teams + num)->mutex_box_state);
 
         (teams + num)->n_cars_seg_mode -= 1;
         if ((teams + num)->n_cars_seg_mode == 0)
             (teams + num)->box_state = LIVRE;
         else
             (teams + num)->box_state = RESERVADO;
-        sem_post(&(teams + num)->mutex_box_state);
+        pthread_mutex_unlock(&(teams + num)->mutex_box_state);
 
         sem_post(&(teams + num)->box_finished);
     }
