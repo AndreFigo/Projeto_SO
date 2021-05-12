@@ -13,12 +13,10 @@ void Malfunction_manager(int t_avaria)
 
     srand(time(NULL));
 
+    while (1)
+    {
 
-
-    while(1){
-
-
-        data->interupt=0;
+        data->interupt = 0;
         data->tunits_passed = 0;
         data->cars_finished = 0;
         data->cars_ended_tunit = 0;
@@ -28,30 +26,29 @@ void Malfunction_manager(int t_avaria)
         int send_damage;
         char warning[MAXWARNINGMSG], msg[MAXWARNINGMSG];
 
-
         while (1)
         {
             print_debug("Malfunction manager waiting for all cars\n");
             pthread_mutex_lock(&data->end_tunit_mutex);
             while (data->cars_ended_tunit != data->total_cars)
-            {   
+            {
                 pthread_cond_wait(&data->end_tunit, &data->end_tunit_mutex);
             }
-            
+
             pthread_mutex_lock(&data->finish_mutex);
             data->cars_ended_tunit = data->cars_finished;
 
             sprintf(msg, "cars finished %d \n", data->cars_finished);
             print_debug(msg);
 
-            if (data->cars_finished == data->total_cars){
+            if (data->cars_finished == data->total_cars)
+            {
                 pthread_mutex_unlock(&data->finish_mutex);
                 pthread_mutex_unlock(&data->end_tunit_mutex);
                 break;
             }
 
             pthread_mutex_unlock(&data->finish_mutex);
-            
 
             pthread_mutex_unlock(&data->end_tunit_mutex);
 
@@ -68,7 +65,6 @@ void Malfunction_manager(int t_avaria)
             }
             pthread_mutex_unlock(&data->stats_mutex);
 
-            //maybe use a sem instead
             pthread_mutex_lock(&data->new_tunit_mutex);
             data->tunits_passed += 1;
             pthread_cond_broadcast(&data->new_tunit);
@@ -81,10 +77,10 @@ void Malfunction_manager(int t_avaria)
                 for (int i = 0; i < data->n_teams * data->max_car; i++)
                 {
                     // no need  for mutex because it hasnt passed a second yet
-                    if ((cars + i)->num != -1 && (cars + i)->state < BOX && (cars + i)->malfunc ==0)
-                    {   
+                    if ((cars + i)->num != -1 && (cars + i)->state < BOX && (cars + i)->malfunc == 0)
+                    {
                         // ind + 1 because mtype cant be zero
-                        message.mtype = i+1;
+                        message.mtype = i + 1;
                         // calcualte malfunc
                         send_damage = rand() % 100 + 1;
                         // send info to cars
@@ -102,40 +98,41 @@ void Malfunction_manager(int t_avaria)
             pthread_mutex_unlock(&data->new_tunit_mutex);
         }
 
-
-        for(int i=0; i< data->total_cars;++i)
+        for (int i = 0; i < data->total_cars; ++i)
             sem_post(end_race);
 
-        print_stats(cars,data->n_malfuncs);
+        usleep(0.01);
+        print_stats(cars, data->n_malfuncs);
 
         pthread_mutex_lock(&data->interupt_mutex);
         pthread_mutex_lock(&data->forced_stop_mutex);
-        if (data->interupt==1 && data->stop==0){
+        if (data->interupt == 1 && data->stop == 0)
+        {
             pthread_mutex_unlock(&data->forced_stop_mutex);
             pthread_mutex_unlock(&data->interupt_mutex);
 
-            pthread_mutex_lock(& data->on_going_mutex);
-            data->on_going=0;
+            pthread_mutex_lock(&data->on_going_mutex);
+            data->on_going = 0;
             usleep(0.1);
             app_log("RACE INTERRUPTED SUCCESFULLY. READY TO START AGAIN\n");
-            pthread_mutex_unlock(& data->on_going_mutex);
+            pthread_mutex_unlock(&data->on_going_mutex);
             continue;
-        }else{
+        }
+        else
+        {
             pthread_mutex_unlock(&data->forced_stop_mutex);
             pthread_mutex_unlock(&data->interupt_mutex);
             break;
         }
     }
 
-
-    for (int i=0; i< data->n_teams;++i){
-        (teams+i)->ind_catual=-1;
-        sem_post(&(teams+i)->entered_box);
+    for (int i = 0; i < data->n_teams; ++i)
+    {
+        (teams + i)->ind_catual = -1;
+        sem_post(&(teams + i)->entered_box);
     }
 
     sem_post(end_simulator);
-
-
 
     print_debug("Saiu malfunction manager\n");
 }

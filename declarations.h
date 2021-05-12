@@ -37,6 +37,8 @@
 #define MAXWARNINGMSG 200
 #define MAXTABELA 1001
 
+#define REFUEL_TIME 2
+
 #define CORRIDA 0
 #define SEGURANCA 1
 #define BOX 2
@@ -65,7 +67,8 @@ typedef struct
     int team_num, ind_car;
 } info;
 
-typedef struct {
+typedef struct
+{
     int ind, last, current;
 } state_change;
 
@@ -80,7 +83,7 @@ typedef struct
 
 typedef struct
 {
-    sem_t car_ready, entered_box, box_finished; 
+    sem_t car_ready, entered_box, box_finished;
     pthread_mutex_t mutex_box_state, pipe_write_mutex;
     int box_state, n_cars, n_cars_seg_mode, ind_catual;
     char name[MAXNOMEEQUIPA];
@@ -93,7 +96,7 @@ typedef struct
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
     int on_going, stop, interupt, n_malfuncs, stats, on_track;
     float fuel_tank;
-    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex, check_malf_mutex;
+    pthread_mutex_t finish_mutex, new_tunit_mutex, end_tunit_mutex, stats_mutex;
     pthread_mutex_t forced_stop_mutex, interupt_mutex, log_mutex, on_going_mutex;
     pthread_cond_t new_tunit, end_tunit;
 
@@ -173,7 +176,7 @@ void increment_cars_finished();
 
 void sigusr1(int signo);
 
-void print_stats(car * c,int n_malf);
+void print_stats(car *c, int n_malf);
 
 /* ================================= VARIAVEIS GLOBAIS ================================= */
 

@@ -13,19 +13,17 @@ void Team_manager(int num)
 
     for (int i = 0; i < data->n_teams; ++i)
     {
-        if (i!= num && close((teams + i)->fd[1]) == -1)
+        if (i != num && close((teams + i)->fd[1]) == -1)
         {
             perror("ERROR: Failed to close unnamed pipe\n");
             exit(1);
         }
-        if ( close((teams + i)->fd[0]) == -1)
+        if (close((teams + i)->fd[0]) == -1)
         {
             perror("ERROR: Failed to close unnamed pipe\n");
             exit(1);
         }
     }
-
-
 
     info *ids = (info *)malloc(sizeof(info) * data->max_car);
     (teams + num)->box_state = LIVRE;
@@ -55,7 +53,7 @@ void Team_manager(int num)
     //repair car
     //fill tank
     //update box state and car state
-    int time_box = 2, t_max = data->T_Box_Max, t_min = data->T_Box_min;
+    int time_box = REFUEL_TIME, t_max = data->T_Box_Max, t_min = data->T_Box_min;
     srand(time(NULL));
     while (1)
     {
@@ -80,21 +78,25 @@ void Team_manager(int num)
 
         (cars + ind_car)->fuel = data->fuel_tank;
         (cars + ind_car)->box_time = 0;
-        (cars+ind_car)->distance= (cars+ind_car)->laps_done* data->distance;
+        (cars + ind_car)->distance = (cars + ind_car)->laps_done * data->distance;
 
         for (int i = 0; i < time_box; i++)
         {
+            pthread_mutex_lock(&data->interupt_mutex);
             pthread_mutex_lock(&data->forced_stop_mutex);
-            if (data->stop == 1)
+            if (data->stop == 1 || data->interupt == 1)
             {
                 pthread_mutex_unlock(&data->forced_stop_mutex);
+                pthread_mutex_unlock(&data->interupt_mutex);
+
                 (cars + ind_car)->state = TERMINADO;
                 increment_cars_finished();
-                
+
                 communicate_status_changes(num, ind_car, BOX, TERMINADO);
                 break;
             }
             pthread_mutex_unlock(&data->forced_stop_mutex);
+            pthread_mutex_unlock(&data->interupt_mutex);
 
             print_debug("BOX just passed another second\nAAAAAAAAAAAAAAAAAAAAA\n");
             pthread_mutex_lock(&data->end_tunit_mutex);
@@ -102,7 +104,6 @@ void Team_manager(int num)
             pthread_cond_signal(&data->end_tunit);
 
             pthread_mutex_unlock(&data->end_tunit_mutex);
-
 
             // wait for a tunit to pass
             pthread_mutex_lock(&data->new_tunit_mutex);

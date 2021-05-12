@@ -201,13 +201,14 @@ int last_place(car *copy, int len)
 {
 
     int min = data->distance * (data->n_laps + 1);
-    int ind_min = -1, max_time=-1;;
+    int ind_min = -1, max_time = -1;
+    ;
     for (int i = 0; i < len; i++)
     {
-        if ( (copy + i)->num != -1  && ( (copy + i)->distance < min ||  ((copy + i)->distance==min  &&  (copy + i)->time_passed>max_time ) )  )
+        if ((copy + i)->num != -1 && ((copy + i)->distance < min || ((copy + i)->distance == min && (copy + i)->time_passed > max_time)))
         {
             min = (copy + i)->distance;
-            max_time= (copy + i)->time_passed;
+            max_time = (copy + i)->time_passed;
             ind_min = i;
         }
     }
@@ -216,7 +217,7 @@ int last_place(car *copy, int len)
 
 int max_distance(car *copy, int len, int *seen, int len2)
 {
-    int max = -1, used, ind_max = -1, min_time=999999;
+    int max = -1, used, ind_max = -1, min_time = 999999;
 
     for (int i = 0; i < len; i++)
     {
@@ -233,10 +234,10 @@ int max_distance(car *copy, int len, int *seen, int len2)
             if (seen[j] == -1)
                 break;
         }
-        if (!used &&( (copy + i)->distance > max || ((copy + i)->distance == max &&(copy + i)->time_passed < min_time ) ))
+        if (!used && ((copy + i)->distance > max || ((copy + i)->distance == max && (copy + i)->time_passed < min_time)))
         {
             max = (copy + i)->distance;
-            min_time= (copy + i)->time_passed ;
+            min_time = (copy + i)->time_passed;
             ind_max = i;
         }
     }
@@ -340,7 +341,6 @@ void init_sem()
         }
     }
 
-
     // mudar para mutex
     /*for (int i = 0; i < data->n_teams * data->max_car; ++i)
     {   
@@ -350,8 +350,6 @@ void init_sem()
             exit(1);
         }
     }*/
-
-    
 
     /* Initialize mutex. */
     if (pthread_mutex_init(&(data->finish_mutex), &(attrmutex)) != 0)
@@ -372,11 +370,6 @@ void init_sem()
     if (pthread_mutex_init(&(data->stats_mutex), &(attrmutex)) != 0)
     {
         perror("Problemas a inicializar o mutex stats_mutex\n");
-        exit(1);
-    }
-    if (pthread_mutex_init(&(data->check_malf_mutex), &(attrmutex)) != 0)
-    {
-        perror("Problemas a inicializar o mutex check_malf_mutex\n");
         exit(1);
     }
     if (pthread_mutex_init(&(data->forced_stop_mutex), &(attrmutex)) != 0)
@@ -588,7 +581,7 @@ void terminate_sem()
             exit(1);
         }
     }
-/*
+    /*
     for (int i = 0; i < data->n_teams * data->max_car; ++i)
     {
         if (pthread_mutex_destroy(&((cars + i)->state_mutex)) != 0)
@@ -617,11 +610,6 @@ void terminate_sem()
     if (pthread_mutex_destroy(&(data->stats_mutex)) != 0)
     {
         perror("ERROR: Failed to destroy stats_mutex mutex\n");
-        exit(1);
-    }
-    if (pthread_mutex_destroy(&(data->check_malf_mutex)) != 0)
-    {
-        perror("ERROR: Failed to destroy check_malf_mutex mutex\n");
         exit(1);
     }
     if (pthread_mutex_destroy(&(data->forced_stop_mutex)) != 0)
@@ -768,9 +756,12 @@ int main()
     {
         if (sem_wait(end_simulator) == -1)
         {
-            app_log("SAIU SEMAFORO\n");
             if (errno == EINTR)
                 continue;
+            else
+            {
+                //true error
+            }
         }
         break;
     }

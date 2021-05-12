@@ -25,13 +25,12 @@ void Race_manager(int n_equipas)
     for (int i = 0; i < n_equipas; ++i)
     {
         if (close((teams + i)->fd[1]) == -1)
-        {   
+        {
             print_debug("1\n");
             perror("ERROR: Failed to close unnamed pipe\n");
             exit(1);
         }
     }
-
 
     if ((fd_named_pipe = open(PIPE_NAME, O_RDWR)) < 0)
     {
@@ -49,33 +48,32 @@ void Race_manager(int n_equipas)
     sigaction(SIGUSR1, &interupt_race, NULL);
 
     char log_msg[MAXERRORMSG];
-    sprintf(log_msg,"ACCEPTING SIGUSR1 SINGAL IN PID %d\n", (int)getpid() );
+    sprintf(log_msg, "ACCEPTING SIGUSR1 SINGAL IN PID %d\n", (int)getpid());
     app_log(log_msg);
 
     //read from all pipes
     fd_set read_set;
     state_change change;
     print_debug("Listening from all pipes\n");
-    int nread,leave=0;
+    int nread, leave = 0;
     char line[MAXTAMCOMMANDS];
 
-    int max_fd= max_file();
-    int cars_finished=0;
-
+    int max_fd = max_file();
+    int cars_finished = 0;
 
     while (1)
-    {   
+    {
         if (leave)
             break;
         FD_ZERO(&read_set);
         FD_SET(fd_named_pipe, &read_set);
-     
+
         for (int i = 0; i < data->n_teams; ++i)
             FD_SET((teams + i)->fd[0], &read_set);
 
         //VERIFICAR SE O FD_NAMED_PIPE É EFETIVAMENTE O MAIOR
         if (select(max_fd + 1, &read_set, NULL, NULL, NULL) > 0)
-        {   
+        {
             if (FD_ISSET(fd_named_pipe, &read_set))
             {
                 nread = read(fd_named_pipe, line, MAXTAMLINE);
@@ -86,8 +84,8 @@ void Race_manager(int n_equipas)
                 while (token != NULL)
                 {
                     if (strcmp(token, "START RACE!") == 0)
-                    {   
-                        pthread_mutex_lock(& data->on_going_mutex);
+                    {
+                        pthread_mutex_lock(&data->on_going_mutex);
                         if (data->on_going)
                             sprintf(log_msg, "%s - Rejected, race is on going!\n", token);
                         else
@@ -95,7 +93,7 @@ void Race_manager(int n_equipas)
                             //recomecar a corrida
 
                             //------------------------- to do -----------------------------//
-                            
+
                             data->on_going = 1;
 
                             for (int i = 0; i < (data->total_cars + 1); ++i)
@@ -105,8 +103,7 @@ void Race_manager(int n_equipas)
 
                             sprintf(log_msg, "%s - Restarting race\n", token);
                         }
-                        pthread_mutex_unlock(& data->on_going_mutex);
-
+                        pthread_mutex_unlock(&data->on_going_mutex);
                     }
                     else
                     {
@@ -117,14 +114,13 @@ void Race_manager(int n_equipas)
                         if (strcmp(token2, "ADDCAR"))
                         {
                             // reject
-                            pthread_mutex_lock(& data->on_going_mutex);
+                            pthread_mutex_lock(&data->on_going_mutex);
 
                             if (data->on_going)
                                 sprintf(log_msg, "%s - Rejected, race already started!\n", token);
                             else
                                 sprintf(log_msg, "%s - Rejected, cannot add cars in after interrupt or sigint!\n", token);
-                            pthread_mutex_unlock(& data->on_going_mutex);
-                            
+                            pthread_mutex_unlock(&data->on_going_mutex);
                         }
                         else
                         {
@@ -141,30 +137,32 @@ void Race_manager(int n_equipas)
             {
                 if (FD_ISSET((teams + i)->fd[0], &read_set))
                 {
-                    
-                    nread = read((teams + i)->fd[0],&change, sizeof(state_change));
 
-                    if (nread ==-1){
+                    nread = read((teams + i)->fd[0], &change, sizeof(state_change));
+
+                    if (nread == -1)
+                    {
 
                         //error
                     }
                     print_status_changes(change.ind, change.last, change.current);
 
-                    if(change.current==TERMINADO || change.current==DESISTENCIA)
+                    if (change.current == TERMINADO || change.current == DESISTENCIA)
                         cars_finished++;
 
-                    if(cars_finished == data->total_cars){
+                    if (cars_finished == data->total_cars)
+                    {
 
                         pthread_mutex_lock(&data->interupt_mutex);
                         pthread_mutex_lock(&data->forced_stop_mutex);
 
-                        if (data->stop==1 || data->interupt==0)
-                            leave=1;
+                        if (data->stop == 1 || data->interupt == 0)
+                            leave = 1;
                         else
-                            cars_finished=0;
-                        
+                            cars_finished = 0;
+
                         pthread_mutex_unlock(&data->forced_stop_mutex);
-                        pthread_mutex_unlock(&data->interupt_mutex);                        
+                        pthread_mutex_unlock(&data->interupt_mutex);
                     }
 
                     /*
@@ -194,8 +192,10 @@ void Race_manager(int n_equipas)
                     }*/
                 }
             }
-        }else{
-            if (errno==EINTR)
+        }
+        else
+        {
+            if (errno == EINTR)
                 continue;
         }
     }
@@ -203,8 +203,6 @@ void Race_manager(int n_equipas)
     //ignore sigusr1
     interupt_race.sa_handler = SIG_IGN;
     sigaction(SIGUSR1, &interupt_race, NULL);
-
-
 
     for (int i = 0; i < n_equipas; ++i)
         wait(NULL);
@@ -224,22 +222,18 @@ void Race_manager(int n_equipas)
         exit(1);
     }
 
-
-    
     print_debug("Saiu race manager\n");
 }
 
-void sigusr1(int signo){
-
+void sigusr1(int signo)
+{
 
     pthread_mutex_lock(&data->interupt_mutex);
-    data->interupt=1;
+    data->interupt = 1;
     pthread_mutex_unlock(&data->interupt_mutex);
 
     app_log("SIGUSR1 call, interupting race\n");
-
 }
-
 
 void print_status_changes(int ind, int last, int current)
 {
@@ -251,12 +245,13 @@ void print_status_changes(int ind, int last, int current)
     app_log(msg);
 }
 
-
-int max_file(){
-    int max= fd_named_pipe;
-    for  (int i = 0; i < data->n_teams; ++i){
+int max_file()
+{
+    int max = fd_named_pipe;
+    for (int i = 0; i < data->n_teams; ++i)
+    {
         if ((teams + i)->fd[0] > max)
-            max=(teams + i)->fd[0];
+            max = (teams + i)->fd[0];
     }
     return max;
 }
@@ -272,13 +267,12 @@ void read_commands()
             break;
 
         nread = read(fd_named_pipe, line_input, MAXTAMLINE);
+
         line_input[nread - 1] = 0;
 
         char *token = strtok(line_input, "\n");
         while (token != NULL)
         {
-
-            
 
             if (leave == 1)
             {
@@ -337,13 +331,13 @@ int car_exists(int car_num, int team_pos)
     //printf("Checking car %d\n", car_num);
     for (int i = 0; i < data->max_car * data->n_teams; i++)
     {
-        if ((cars +i)->num == car_num)
+        if ((cars + i)->num == car_num)
             return -2;
     }
-    for (int i=0;i< data->max_car;++i){
-        if ((cars + team_pos* data->max_car+i)->num == -1)
-            return team_pos* data->max_car+i;
-
+    for (int i = 0; i < data->max_car; ++i)
+    {
+        if ((cars + team_pos * data->max_car + i)->num == -1)
+            return team_pos * data->max_car + i;
     }
     return -1;
 }
@@ -450,7 +444,7 @@ int add_car(char *line)
 
         if (strcmp((teams + pos)->name, "") == 0)
             strcpy((teams + pos)->name, team_name);
-        
+
         //printf("POS %d\nNAME %s\nNUM %d\nPOSCAR %d\n", pos,(teams + pos)->name, car_num , pos_car);
 
         (teams + pos)->n_cars += 1;
@@ -465,7 +459,8 @@ int add_car(char *line)
 
         (cars + pos_car)->reliability = car_reliability;
 
-        if (sem_post(&((teams + pos)->car_ready))==-1){
+        if (sem_post(&((teams + pos)->car_ready)) == -1)
+        {
             printf("Erro no sem_post\n");
         }
         log_load_car(line);
