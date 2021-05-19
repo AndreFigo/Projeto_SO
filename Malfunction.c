@@ -7,8 +7,7 @@
 
 void Malfunction_manager(int t_avaria)
 {
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTSTP, SIG_IGN);
+    ignore_signals();
     print_debug("Malfuncion_manager\n");
 
     srand(time(NULL));
@@ -16,13 +15,14 @@ void Malfunction_manager(int t_avaria)
     while (1)
     {
 
-        data->interupt = 0;
+        
         data->tunits_passed = 0;
         data->cars_finished = 0;
         data->cars_ended_tunit = 0;
         data->n_malfuncs = 0;
 
         sem_wait(start_race);
+        data->interupt = 0;
         int send_damage;
         char warning[MAXWARNINGMSG], msg[MAXWARNINGMSG];
 
@@ -101,7 +101,6 @@ void Malfunction_manager(int t_avaria)
         for (int i = 0; i < data->total_cars; ++i)
             sem_post(end_race);
 
-        usleep(0.01);
         print_stats(cars, data->n_malfuncs);
 
         pthread_mutex_lock(&data->interupt_mutex);
@@ -113,7 +112,6 @@ void Malfunction_manager(int t_avaria)
 
             pthread_mutex_lock(&data->on_going_mutex);
             data->on_going = 0;
-            usleep(0.1);
             app_log("RACE INTERRUPTED SUCCESFULLY. READY TO START AGAIN\n");
             pthread_mutex_unlock(&data->on_going_mutex);
             continue;

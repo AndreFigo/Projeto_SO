@@ -83,6 +83,7 @@ typedef struct
 
 typedef struct
 {
+    pid_t team_pid;
     sem_t car_ready, entered_box, box_finished;
     pthread_mutex_t mutex_box_state, pipe_write_mutex;
     int box_state, n_cars, n_cars_seg_mode, ind_catual;
@@ -91,7 +92,8 @@ typedef struct
 } team;
 
 typedef struct
-{
+{   
+    pid_t malfunc_pid, manager_pid;
     int n_laps, n_teams, max_car, logfile, u_time, distance, u_time_malfunc, T_Box_min, T_Box_Max;
     int total_cars, cars_finished, cars_waiting_tunit, cars_ended_tunit, tunits_passed;
     int on_going, stop, interupt, n_malfuncs, stats, on_track;
@@ -174,6 +176,16 @@ int max_file();
 
 void increment_cars_finished();
 
+void sigint_before_race_Sim();
+
+void init_sigint();
+
+void init_sigtstp();
+
+void ignore_sigint();
+
+void ignore_sigtstp();
+
 void sigusr1(int signo);
 
 void print_stats(car *c, int n_malf);
@@ -190,8 +202,8 @@ int logfile, fd_named_pipe;
 pthread_mutexattr_t attrmutex;
 pthread_condattr_t attrcondv;
 //mudar forced_stop
-sem_t *start_race, *begin_copy, *ended_copy, *end_race, *end_simulator;
-struct sigaction print_est, finish_race, interupt_race;
+sem_t *start_race, *begin_copy, *ended_copy, *end_race, *end_simulator, *pid_ready;
+struct sigaction print_est, finish_race, interupt_race, stop_commands;
 sigset_t block_set_est, block_set_fin;
 
 #endif

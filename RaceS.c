@@ -9,54 +9,90 @@ int verify(float *config)
 {
     if (config[0] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao unidades de tempo.");
+        fprintf(stderr, "ERROR: Invalid time units.\n");
         return -1;
     }
     else if (config[1] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao da distancia de cada volta.");
+        fprintf(stderr, "ERROR: Invalide distance per lap.\n");
         return -1;
     }
     else if (config[2] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao do numero de voltas.");
+        fprintf(stderr, "ERROR: Invalid number of laps.\n");
         return -1;
     }
     else if (config[3] < 3)
     {
-        fprintf(stderr, "Numero de equipas devera ser no minimo 3.");
+        fprintf(stderr, "ERROR: Number of teams must be at least 3.\n");
         return -1;
     }
     else if (config[4] < 1)
     {
-        fprintf(stderr, "Erro na colocacao do numero maximo de carros por equipa.");
+        fprintf(stderr, "ERROR: Invalid number of cars per team.\n");
         return -1;
     }
     else if (config[5] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao das unidades de tempo entre o novo calculo de uma avaria.");
+        fprintf(stderr, "ERROR: Invalid time units between the calculation of a new malfunction.\n");
         return -1;
     }
     else if (config[6] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao do tempo minimo de reparacao.");
+        fprintf(stderr, "ERROR: Invalid choice for minimum time to repair.\n");
         return -1;
     }
     else if (config[7] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao do tempo maximo de reparacao.");
+        fprintf(stderr, "ERROR: Invalid choice for maximum time to repair.\n");
         return -1;
     }
     else if (config[8] <= 0)
     {
-        fprintf(stderr, "Erro na colocacao da capacidade do deposito de combustivel.");
+        fprintf(stderr, "ERROR: Invalid choice for the capacity of gas for the tank.\n");
         return -1;
     }
     return 0;
 }
 
+
+
+void sigint_before_race_Sim(){
+
+    app_log("^C PRESSED. SIMULATOR LEAVING\n");
+    
+    kill(data->malfunc_pid, SIGKILL);
+    kill(data->manager_pid, SIGKILL);
+    for (int i=0 ;i < data->n_teams;++i)
+        kill((teams +i)->team_pid, SIGKILL);
+    
+    waitpid(data->malfunc_pid, NULL,0);
+    waitpid(data->manager_pid, NULL,0);
+    for (int i=0 ;i < data->n_teams;++i)
+        waitpid((teams+i)-> team_pid, NULL,0);
+
+
+    terminate();
+    exit(0);
+
+}
+
 void sigint(int signo)
 {
+
+    pthread_mutex_lock(&data->on_going_mutex);
+
+    if ( data-> on_going==0){
+        pthread_mutex_unlock(&data->on_going_mutex);
+        sem_wait(pid_ready);
+        sigint_before_race_Sim();
+    }
+
+    pthread_mutex_unlock(&data->on_going_mutex);
+
+
+
+
     app_log("^C pressed. Terminating race\n");
     //finish race
     pthread_mutex_lock(&data->forced_stop_mutex);
@@ -96,7 +132,16 @@ void sigint(int signo)
 }
 
 void sigtstp(int signo)
-{
+{   
+
+    pthread_mutex_lock(&data->on_going_mutex);
+
+    if ( data-> on_going==0){
+        pthread_mutex_unlock(&data->on_going_mutex);
+        return;
+    }
+
+    pthread_mutex_unlock(&data->on_going_mutex);
 
     //print estatisticas
     app_log("^Z pressed. Showing stats\n");
@@ -132,7 +177,7 @@ void print_stats(car *c, int n_malf)
 
     char separator[50] = "----------------------------------------\n";
     char stats[7][200] = {0};
-    //strcat(tabela, "\nESTATISTICAS\n");
+
 
     for (int j = 0; j < 5; j++)
     {
@@ -250,24 +295,24 @@ void init_sem()
     /* Initialize attribute of mutex. */
     if (pthread_mutexattr_init(&(attrmutex)) != 0)
     {
-        perror("Problemas a inicializar o atributo do mutex\n");
+        perror("ERROR: Failed to initialize mutex atribute\n");
         exit(1);
     }
     if (pthread_mutexattr_setpshared(&(attrmutex), PTHREAD_PROCESS_SHARED) != 0)
     {
-        perror("Problemas ao partilhar mutex\n");
+        perror("ERROR: Failed to share mutex\n");
         exit(1);
     }
 
     /* Initialize attribute of condition variable. */
     if (pthread_condattr_init(&(attrcondv)) != 0)
     {
-        perror("Problemas ao inicializar a variavel de condicao\n");
+        perror("ERROR: Failed to initialize condition variable\n");
         exit(1);
     }
     if (pthread_condattr_setpshared(&(attrcondv), PTHREAD_PROCESS_SHARED) != 0)
     {
-        perror("Problemas ao partilhar a variavel de condicao\n");
+        perror("ERROR: Failed to share condition variable\n");
         exit(1);
     }
 
@@ -308,35 +353,43 @@ void init_sem()
         exit(1);
     }
 
+    sem_unlink("PID");
+    if ((pid_ready = sem_open("PID", O_CREAT | O_EXCL, 0766, 0)) == SEM_FAILED)
+    {
+        perror("ERROR: Failed to create semaphore\n");
+        exit(1);
+    }
+
+
     for (int i = 0; i < data->n_teams; ++i)
     {
         if (sem_init(&((teams + i)->car_ready), 1, 0) != 0)
         {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d car_ready\n", i);
+            fprintf(stderr, "ERROR: Failed to initialize %d car_ready\n", i);
             exit(1);
         }
 
         if (sem_init(&((teams + i)->box_finished), 1, 0) != 0)
         {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d box_finished\n", i);
+            fprintf(stderr, "ERROR: Failed to initialize %d box_finished\n", i);
             exit(1);
         }
 
         if (sem_init(&((teams + i)->entered_box), 1, 0) != 0)
         {
-            fprintf(stderr, "Problemas a inicializar o semaforo %d entered_box\n", i);
+            fprintf(stderr, "ERROR: Failed to initialize %d entered_box\n", i);
             exit(1);
         }
 
         if (pthread_mutex_init(&((teams + i)->mutex_box_state), &(attrmutex)) != 0)
         {
-            perror("Problemas a inicializar o mutex finish_mutex\n");
+            perror("ERROR: Failed to initialize mutex_box_state\n");
             exit(1);
         }
 
         if (pthread_mutex_init(&((teams + i)->pipe_write_mutex), &(attrmutex)) != 0)
         {
-            perror("Problemas a inicializar o mutex finish_mutex\n");
+            perror("ERROR: Failed to initialize pipe_write_mutex\n");
             exit(1);
         }
     }
@@ -491,28 +544,48 @@ void init(float *config)
     init_sem();
 }
 
-void ignore_signals()
-{
-    sigemptyset(&print_est.sa_mask);
-    print_est.sa_flags = 0;
-    print_est.sa_handler = SIG_IGN;
-
+void ignore_sigint(){
     sigemptyset(&finish_race.sa_mask);
     finish_race.sa_flags = 0;
     finish_race.sa_handler = SIG_IGN;
 
-    sigaction(SIGINT, &print_est, NULL);
-    sigaction(SIGTSTP, &finish_race, NULL);
+    sigaction(SIGINT, &finish_race, NULL);
+
 }
 
-void init_signal()
-{
-    print_est.sa_handler = &sigtstp;
-    finish_race.sa_handler = &sigint;
-
-    sigaction(SIGINT, &finish_race, NULL);
+void ignore_sigtstp(){
+    sigemptyset(&print_est.sa_mask);
+    print_est.sa_flags = 0;
+    print_est.sa_handler = SIG_IGN;
     sigaction(SIGTSTP, &print_est, NULL);
 }
+
+void ignore_signals()
+{
+    ignore_sigint();
+    ignore_sigtstp();
+}
+
+void init_sigint(){
+
+    sigemptyset(&finish_race.sa_mask);
+    finish_race.sa_flags = 0;
+    finish_race.sa_handler = &sigint;
+    sigaction(SIGINT, &finish_race, NULL);
+
+}
+
+void init_sigtstp(){
+    sigemptyset(&print_est.sa_mask);
+    sigaddset(&print_est.sa_mask, SIGINT);
+    print_est.sa_flags = 0;
+    
+    print_est.sa_handler = &sigtstp;
+    sigaction(SIGTSTP, &print_est, NULL);
+
+
+}
+
 
 void terminate_sem()
 {
@@ -546,6 +619,13 @@ void terminate_sem()
 
     sem_unlink("END_COPY");
     if (sem_close(ended_copy) == -1)
+    {
+        perror("ERROR: Failed to close semaphore END_COPY\n");
+        exit(1);
+    }
+
+    sem_unlink("PID");
+    if (sem_close(pid_ready) == -1)
     {
         perror("ERROR: Failed to close semaphore END_COPY\n");
         exit(1);
@@ -661,9 +741,7 @@ void terminate_sem()
 
 void terminate()
 {
-    /* Destroy semaphores*/
-    //o que é que é este log_mutex?
-
+    /* Destroy semaphores */
     terminate_sem();
 
     if (close(data->logfile) == -1)
@@ -702,8 +780,7 @@ void terminate()
 
 int main()
 {
-
-    ignore_signals();
+    ignore_sigtstp();
 
     if ((logfile = creat(LOGFILE, S_IRWXU | S_IROTH | S_IWOTH | S_IRGRP | S_IWGRP)) == -1)
     {
@@ -717,20 +794,22 @@ int main()
     init(config);
 
     app_log("SIMULATOR STARTING\n");
-
-    if (fork() == 0)
+    pid_t aux;
+    if ((aux = fork()) == 0)
     {
         Race_manager(data->n_teams);
         exit(0);
     }
+
+    data-> manager_pid= aux;
 
     for (int i = 0; i < data->n_teams; ++i)
     {
         if (close((teams + i)->fd[0]) == -1)
         {
             print_debug("2\n");
-            perror("ERROR: Failed to close unnamed pipe\n");
-            exit(1);
+            perror("ERROR: Failed to close unnamed pipe\n");  
+            exit(1); 
         }
         if (close((teams + i)->fd[1]) == -1)
         {
@@ -739,17 +818,21 @@ int main()
             exit(1);
         }
     }
-
-    if (fork() == 0)
+    
+    if ( (aux = fork() )== 0)   
     {
         Malfunction_manager(data->u_time_malfunc);
         exit(0);
     }
 
+    data-> malfunc_pid= aux; 
+
+    init_sigint();
+
     sem_wait(start_race);
 
     print_debug("Simulator entered race\n");
-    init_signal();
+    init_sigtstp();
 
     // sinais
     while (1)
@@ -761,10 +844,13 @@ int main()
             else
             {
                 //true error
+                
             }
         }
         break;
     }
+
+    ignore_signals();
 
     /*pthread_mutex_lock(&data->finish_mutex);
 

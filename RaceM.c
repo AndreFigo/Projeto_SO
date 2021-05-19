@@ -8,19 +8,21 @@
 void Race_manager(int n_equipas)
 {
 
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTSTP, SIG_IGN);
+    ignore_signals();
 
     print_debug("race manager!\n");
-
+    pid_t aux;
     for (int i = 0; i < n_equipas; ++i)
     {
-        if (fork() == 0)
+        if ((aux=fork()) == 0)
         {
             Team_manager(i);
             exit(0);
         }
+        (teams + i)-> team_pid=aux;
     }
+
+    sem_post(pid_ready);
 
     for (int i = 0; i < n_equipas; ++i)
     {
@@ -91,17 +93,13 @@ void Race_manager(int n_equipas)
                         else
                         {
                             //recomecar a corrida
-
-                            //------------------------- to do -----------------------------//
-
-                            data->on_going = 1;
-
                             for (int i = 0; i < (data->total_cars + 1); ++i)
                             {
                                 sem_post(start_race);
                             }
 
                             sprintf(log_msg, "%s - Restarting race\n", token);
+                            data->on_going = 1;
                         }
                         pthread_mutex_unlock(&data->on_going_mutex);
                     }
@@ -137,14 +135,16 @@ void Race_manager(int n_equipas)
             {
                 if (FD_ISSET((teams + i)->fd[0], &read_set))
                 {
+                    do {
+                        nread = read((teams + i)->fd[0], &change, sizeof(state_change));
 
-                    nread = read((teams + i)->fd[0], &change, sizeof(state_change));
+                        if (nread == -1)
+                        {
+                            //error
+                            app_log("Unable to read from pipe.\n");
+                        }
+                    }while( nread<0);
 
-                    if (nread == -1)
-                    {
-
-                        //error
-                    }
                     print_status_changes(change.ind, change.last, change.current);
 
                     if (change.current == TERMINADO || change.current == DESISTENCIA)
