@@ -1,0 +1,210 @@
+21:10:9 SIMULATOR STARTING
+21:10:12 NEW COMMAND RECEIVED: START RACE
+21:10:12 CANNOT START, NOT ENOUGH TEAMS
+21:10:12 NEW CAR LOADED => ADDCAR TEAM: A, CAR: 20, SPEED: 30, CONSUMPTION: 5, RELIABILITY: 10
+21:10:12 NEW CAR LOADED => ADDCAR TEAM: B, CAR: 01, SPEED: 32, CONSUMPTION: 0.04, RELIABILITY: 10
+21:10:13 WRONG COMMAND - CAR NUMBER ALREADY EXISTS!! (ADDCAR TEAM: B, CAR: 01, SPEED: 33, CONSUMPTION: 0.05, RELIABILITY: 92).
+21:10:13 NEW CAR LOADED => ADDCAR TEAM: B, CAR: 04, SPEED: 32, CONSUMPTION: 0.06, RELIABILITY: 10
+21:10:13 WRONG COMMAND - NUMBER OF CARS EXCEEDED!! (ADDCAR TEAM: B, CAR: 05, SPEED: 34, CONSUMPTION: 0.06, RELIABILITY: 91).
+21:10:13 NEW CAR LOADED => ADDCAR TEAM: C, CAR: 02, SPEED: 32, CONSUMPTION: 0.04, RELIABILITY: 10
+21:10:13 NEW COMMAND RECEIVED: START RACE
+21:10:13 ACCEPTING SIGUSR1 SINGAL IN PID 16514
+21:10:13 CARRO 20 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:13 ADDCAR TEAM: B, CAR: 05, SPEED: 34, CONSUMPTION: 0.06, RELIABILITY: 91 - Rejected, wrong command!
+21:10:13 ADDCAR TEAM: C, CAR: 01, SPEED: 32, CONSUMPTION: 0.04, RELIABILITY: 90 - Rejected, wrong command!
+21:10:13 CARRO 20 PASSOU DO MODO SEGURANCA PARA O MODO DESISTENCIA
+21:10:13 MALFUNCTION DETECTED in car number 1
+21:10:13 MALFUNCTION DETECTED in car number 4
+21:10:13 MALFUNCTION DETECTED in car number 2
+21:10:13 CARRO 4 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:13 CARRO 2 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:13 CARRO 1 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:14 ^Z pressed. Showing stats
+21:10:14 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 1, Stops-> 0, Distance-> 1148, Time-> 51
+2o lugar: Num-> 4, Team-> 2, voltas-> 1, Stops-> 0, Distance-> 1148, Time-> 51
+3o lugar: Num-> 2, Team-> 3, voltas-> 1, Stops-> 0, Distance-> 1148, Time-> 51
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 0
+Total de avarias: 3
+Em pista: 3
+----------------------------------------
+21:10:14 CARRO 1 NAO CONSEGUIU ENTRAR NA BOX
+21:10:14 CARRO 4 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:14 CARRO 2 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:14 CARRO 4 PASSOU DO MODO BOX PARA O MODO CORRIDA
+21:10:14 CARRO 2 PASSOU DO MODO BOX PARA O MODO CORRIDA
+21:10:14 MALFUNCTION DETECTED in car number 4
+21:10:14 MALFUNCTION DETECTED in car number 2
+21:10:14 CARRO 4 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:14 CARRO 2 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:14 ^Z pressed. Showing stats
+21:10:14 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 2, Stops-> 0, Distance-> 1538, Time-> 90
+2o lugar: Num-> 4, Team-> 2, voltas-> 2, Stops-> 1, Distance-> 1418, Time-> 90
+3o lugar: Num-> 2, Team-> 3, voltas-> 2, Stops-> 1, Distance-> 1418, Time-> 90
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 2
+Total de avarias: 5
+Em pista: 3
+----------------------------------------
+21:10:15 ^Z pressed. Showing stats
+21:10:15 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 2, Stops-> 0, Distance-> 1698, Time-> 106
+2o lugar: Num-> 4, Team-> 2, voltas-> 2, Stops-> 1, Distance-> 1578, Time-> 106
+3o lugar: Num-> 2, Team-> 3, voltas-> 2, Stops-> 1, Distance-> 1578, Time-> 106
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 2
+Total de avarias: 5
+Em pista: 3
+----------------------------------------
+21:10:15 ^Z pressed. Showing stats
+21:10:15 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 2, Stops-> 0, Distance-> 2058, Time-> 142
+2o lugar: Num-> 4, Team-> 2, voltas-> 2, Stops-> 1, Distance-> 1938, Time-> 142
+3o lugar: Num-> 2, Team-> 3, voltas-> 2, Stops-> 1, Distance-> 1938, Time-> 142
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 2
+Total de avarias: 5
+Em pista: 3
+----------------------------------------
+21:10:15 CARRO 1 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:15 ^Z pressed. Showing stats
+21:10:15 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2112, Time-> 147
+2o lugar: Num-> 4, Team-> 2, voltas-> 2, Stops-> 1, Distance-> 2038, Time-> 152
+3o lugar: Num-> 2, Team-> 3, voltas-> 2, Stops-> 1, Distance-> 2038, Time-> 152
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 3
+Total de avarias: 5
+Em pista: 2
+----------------------------------------
+21:10:15 CARRO 4 NAO CONSEGUIU ENTRAR NA BOX
+21:10:15 CARRO 2 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:15 ^Z pressed. Showing stats
+21:10:15 ESTATISTICAS
+1o lugar: Num-> 4, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2128, Time-> 161
+2o lugar: Num-> 1, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2112, Time-> 147
+3o lugar: Num-> 2, Team-> 3, voltas-> 3, Stops-> 2, Distance-> 2112, Time-> 159
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 4
+Total de avarias: 5
+Em pista: 1
+----------------------------------------
+21:10:15 CARRO 1 PASSOU DO MODO BOX PARA O MODO CORRIDA
+21:10:15 ^Z pressed. Showing stats
+21:10:15 ESTATISTICAS
+1o lugar: Num-> 4, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2228, Time-> 171
+2o lugar: Num-> 1, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2150, Time-> 171
+3o lugar: Num-> 2, Team-> 3, voltas-> 3, Stops-> 2, Distance-> 2112, Time-> 159
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 4
+Total de avarias: 5
+Em pista: 2
+----------------------------------------
+21:10:16 ^Z pressed. Showing stats
+21:10:16 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2438, Time-> 180
+2o lugar: Num-> 4, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2318, Time-> 180
+3o lugar: Num-> 2, Team-> 3, voltas-> 3, Stops-> 2, Distance-> 2112, Time-> 159
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 4
+Total de avarias: 5
+Em pista: 2
+----------------------------------------
+21:10:16 CARRO 2 PASSOU DO MODO BOX PARA O MODO CORRIDA
+21:10:16 ^Z pressed. Showing stats
+21:10:16 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2726, Time-> 189
+2o lugar: Num-> 4, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2408, Time-> 189
+3o lugar: Num-> 2, Team-> 3, voltas-> 3, Stops-> 2, Distance-> 2342, Time-> 189
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 4
+Total de avarias: 5
+Em pista: 3
+----------------------------------------
+21:10:16 ^Z pressed. Showing stats
+21:10:16 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 4, Stops-> 1, Distance-> 3046, Time-> 199
+2o lugar: Num-> 2, Team-> 3, voltas-> 3, Stops-> 2, Distance-> 2662, Time-> 199
+3o lugar: Num-> 4, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2508, Time-> 199
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 4
+Total de avarias: 5
+Em pista: 3
+----------------------------------------
+21:10:16 MALFUNCTION DETECTED in car number 1
+21:10:16 MALFUNCTION DETECTED in car number 2
+21:10:16 CARRO 1 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:16 CARRO 2 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:16 ^Z pressed. Showing stats
+21:10:16 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 4, Stops-> 1, Distance-> 3376, Time-> 210
+2o lugar: Num-> 2, Team-> 3, voltas-> 4, Stops-> 2, Distance-> 2992, Time-> 210
+3o lugar: Num-> 4, Team-> 2, voltas-> 3, Stops-> 1, Distance-> 2618, Time-> 210
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 4
+Total de avarias: 7
+Em pista: 3
+----------------------------------------
+21:10:16 CARRO 1 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:16 CARRO 4 NAO CONSEGUIU ENTRAR NA BOX
+21:10:17 CARRO 1 PASSOU DO MODO BOX PARA O MODO CORRIDA
+21:10:17 CARRO 2 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:17 CARRO 2 PASSOU DO MODO BOX PARA O MODO CORRIDA
+21:10:17 MALFUNCTION DETECTED in car number 1
+21:10:17 MALFUNCTION DETECTED in car number 2
+21:10:17 CARRO 2 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:17 CARRO 1 PASSOU DO MODO CORRIDA PARA O MODO SEGURANCA
+21:10:17 CARRO 4 PASSOU DO MODO SEGURANCA PARA O MODO BOX
+21:10:17 CARRO 1 NAO CONSEGUIU ENTRAR NA BOX
+21:10:18 ^C pressed. Terminating race
+21:10:18 CARRO 4 PASSOU DO MODO BOX PARA O MODO TERMINADO
+21:10:18 CARRO 2 PASSOU DO MODO SEGURANCA PARA O MODO TERMINADO
+21:10:18 CARRO 1 PASSOU DO MODO SEGURANCA PARA O MODO TERMINADO
+21:10:18 ESTATISTICAS
+1o lugar: Num-> 1, Team-> 2, voltas-> 8, Stops-> 2, Distance-> 5632, Time-> 375
+2o lugar: Num-> 2, Team-> 3, voltas-> 6, Stops-> 3, Distance-> 4224, Time-> 356
+3o lugar: Num-> 4, Team-> 2, voltas-> 5, Stops-> 2, Distance-> 3520, Time-> 343
+4o lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Ultimo lugar: Num-> 20, Team-> 1, voltas-> 0, Stops-> 0, Distance-> 162, Time-> 18
+----------------------------------------
+Total de paragens: 7
+Total de avarias: 9
+Em pista: 0
+----------------------------------------
+21:10:18 SIMULATOR CLOSING

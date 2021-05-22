@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo "START RACE!" > my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: A, CAR: 20, SPEED: 30, CONSUMPTION: 5, RELIABILITY: 10"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: B, CAR: 01, SPEED: 32, CONSUMPTION: 0.04, RELIABILITY: 10"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: B, CAR: 01, SPEED: 33, CONSUMPTION: 0.05, RELIABILITY: 92"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: B, CAR: 04, SPEED: 32, CONSUMPTION: 0.06, RELIABILITY: 10"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: B, CAR: 05, SPEED: 34, CONSUMPTION: 0.06, RELIABILITY: 91"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: C, CAR: 02, SPEED: 32, CONSUMPTION: 0.04, RELIABILITY: 10"> my_pipe
+sleep 0.1
+echo "START RACE!"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: B, CAR: 05, SPEED: 34, CONSUMPTION: 0.06, RELIABILITY: 91"> my_pipe
+sleep 0.1
+echo "ADDCAR TEAM: C, CAR: 01, SPEED: 32, CONSUMPTION: 0.04, RELIABILITY: 90"> my_pipe
