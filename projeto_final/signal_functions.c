@@ -1,3 +1,9 @@
+// Trabalho Prático - Simulador de Corridas
+// André Carvalho 2019216156
+// Sofia Alves 2019227240
+// 20/21
+
+
 #include "declarations.h"
 
 void sigint(int signo)
@@ -179,7 +185,7 @@ void print_stats(car *c, int n_malf)
         if (ind > -1)
         {
             // escrever os dados da equipa ind
-            sprintf(stats[j], "%do lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d, Distance-> %d, Time-> %d\n", j + 1, (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops, (cars + ind)->distance, (cars + ind)->time_passed);
+            sprintf(stats[j], "%d place: Num-> %d, Team-> %s, Laps-> %d, Stops-> %d, Distance-> %d, Time-> %d\n", j + 1, (cars + ind)->num, (teams + (cars + ind)->ind_team)->name, (cars + ind)->laps_done, (cars + ind)->n_stops, (cars + ind)->distance, (cars + ind)->time_passed);
         }
         else
         {
@@ -192,13 +198,13 @@ void print_stats(car *c, int n_malf)
     strncat(stats[4], separator, MAXSEPARATOR);
 
     ind = last_place(c, data->max_car * data->n_teams);
-    sprintf(stats[5], "Ultimo lugar: Num-> %d, Team-> %d, voltas-> %d, Stops-> %d, Distance-> %d, Time-> %d\n", (cars + ind)->num, (cars + ind)->ind_team + 1, (cars + ind)->laps_done, (cars + ind)->n_stops, (cars + ind)->distance, (cars + ind)->time_passed);
+    sprintf(stats[5], "Last Place: Num-> %d, Team-> %s, Laps-> %d, Stops-> %d, Distance-> %d, Time-> %d\n", (cars + ind)->num, (teams + (cars + ind)->ind_team)->name, (cars + ind)->laps_done, (cars + ind)->n_stops, (cars + ind)->distance, (cars + ind)->time_passed);
     strncat(stats[5], separator, MAXSEPARATOR);
 
     //escrevr os stops
     int n_stops = 0, on_track = 0;
     on_track_and_total_stops(&n_stops, &on_track, c, data->max_car * data->n_teams);
-    sprintf(stats[6], "Total de paragens: %d\nTotal de avarias: %d\nEm pista: %d\n", n_stops, n_malf, on_track);
+    sprintf(stats[6], "Total stops: %d\nTotal malfunctions: %d\nOn track: %d\n", n_stops, n_malf, on_track);
 
     strncat(stats[6], separator, MAXSEPARATOR);
 
@@ -208,7 +214,7 @@ void print_stats(car *c, int n_malf)
     struct tm *timeinfo = localtime(&now);
 
     char date[20];
-    sprintf(date, "%d:%d:%d ESTATISTICAS\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    sprintf(date, "%d:%d:%d STATS\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
     write(1, date, strlen(date));
     write(data->logfile, date, strlen(date));
 

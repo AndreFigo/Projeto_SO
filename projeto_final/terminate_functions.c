@@ -1,3 +1,9 @@
+// Trabalho Prático - Simulador de Corridas
+// André Carvalho 2019216156
+// Sofia Alves 2019227240
+// 20/21
+
+
 #include "declarations.h"
 
 void terminate()

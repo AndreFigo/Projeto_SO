@@ -13,7 +13,7 @@ void *car_func(void *p)
     //pthread_t id = pthread_self();
 
     char msg[MAXTAMLINE];
-    sprintf(msg, "Novo carro criado na team %d (Carro %d)\n", team_num, ind);
+    sprintf(msg, "NEW CAR CREATED ON TEAM %d (CAR %d)\n", team_num, ind);
     print_debug(msg);
 
     //print_car_info(ind, team_num);
@@ -23,8 +23,9 @@ void *car_func(void *p)
     while (1)
     {
 
-        //inicializacao do carro
+        sem_wait(start_race);
 
+        //inicializacao do carro
         (cars + ind)->fuel = data->fuel_tank;
         (cars + ind)->distance = 0;
         (cars + ind)->malfunc = 0;
@@ -33,8 +34,7 @@ void *car_func(void *p)
         (cars + ind)->time_passed = 0;
         (cars + ind)->state = CORRIDA;
 
-        sem_wait(start_race);
-        sprintf(msg, "carro %d entered race\n", ind);
+        sprintf(msg, "CAR %d entered race\n", ind);
         print_debug(msg);
         int elapsed = 0, dist_curr = 0, current_speed = (cars + ind)->speed;
         float current_cons = (cars + ind)->consumption;
@@ -43,7 +43,7 @@ void *car_func(void *p)
         while (1)
         {
             //inform that you are ready to wait for a tunit to pass
-            sprintf(msg, "carro %d waiting for time unit (atual %d)\n", ind, elapsed);
+            sprintf(msg, "CAR %d waiting for time unit (atual %d)\n", ind, elapsed);
             print_debug(msg);
             pthread_mutex_lock(&data->end_tunit_mutex);
 
@@ -53,7 +53,10 @@ void *car_func(void *p)
 
             pthread_mutex_unlock(&data->end_tunit_mutex);
 
-            if ((cars + ind)->state == TERMINADO || (cars + ind)->state == DESISTENCIA)
+            if ((cars + ind)->state == TERMINADO)
+                break;
+
+            if ((cars + ind)->state == DESISTENCIA)
             {
                 (cars + ind)->time_passed -= 1;
                 break;
@@ -67,7 +70,7 @@ void *car_func(void *p)
             }
             elapsed += 1;
             pthread_mutex_unlock(&data->new_tunit_mutex);
-            sprintf(msg, "carro %d just started a new tunit\n", ind);
+            sprintf(msg, "CAR %d just started a new tunit\n", ind);
             print_debug(msg);
 
             //check malfunctions
@@ -83,7 +86,7 @@ void *car_func(void *p)
 
             if (elapsed % data->u_time_malfunc == 0)
             {
-                sprintf(msg, "carro %d checking malfunction\n", ind);
+                sprintf(msg, "CAR %d checking malfunction\n", ind);
                 print_debug(msg);
 
                 if (msgrcv(mqid, &warning, sizeof(warning_message) - sizeof(long), ind + 1, IPC_NOWAIT) != -1)
@@ -91,7 +94,7 @@ void *car_func(void *p)
                     //malfunc
                     (cars + ind)->malfunc = 1;
                     enter_safe_mode(team_num, ind, &current_speed, &current_cons);
-                    sprintf(msg, "carro %d just had a malfunction\n", (cars + ind)->num);
+                    sprintf(msg, "CAR %d just had a malfunction\n", (cars + ind)->num);
                     print_debug(msg);
                 }
                 //perror("Na message queue");
@@ -113,7 +116,7 @@ void *car_func(void *p)
             if ((cars + ind)->fuel < 0)
             {
                 (cars + ind)->state = DESISTENCIA;
-                sprintf(msg, "carro %d just gave up\n", ind);
+                sprintf(msg, "CAR %d just gave up\n", ind);
                 print_debug(msg);
                 // comunicate
                 communicate_status_changes(team_num, ind, SEGURANCA, DESISTENCIA);
@@ -170,7 +173,7 @@ void *car_func(void *p)
                 else if (((cars + ind)->state == SEGURANCA && (teams + team_num)->box_state == OCUPADO) || ((cars + ind)->fuel < fuel_4laps && (teams + team_num)->box_state > LIVRE))
                 {
                     pthread_mutex_unlock(&(teams + team_num)->mutex_box_state);
-                    sprintf(msg, "CARRO %d NAO CONSEGUIU ENTRAR NA BOX\n", (cars + ind)->num);
+                    sprintf(msg, "CAR %d COULDN'T ACCESS BOX\n", (cars + ind)->num);
                     app_log(msg);
                 }
                 else
@@ -202,7 +205,7 @@ void *car_func(void *p)
 
     //sleep(1);
 
-    sprintf(msg, "Carro %d a sair da team %d\n", ind, team_num);
+    sprintf(msg, "Carro %d from team %d exited\n", ind, team_num);
     print_debug(msg);
 
     pthread_exit(NULL);
@@ -227,7 +230,7 @@ void enter_safe_mode(int team_num, int ind, int *cur_speed, float *cur_cons)
         //print_debug("atualizou estado e speed\n");
 
         reserve_box(team_num);
-        sprintf(msg, "Carro %d reservou a box %d\n", ind, team_num);
+        sprintf(msg, "CAR %d reserved box %d\n", ind, team_num);
         print_debug(msg);
 
         //print_debug("Reserved box\n");

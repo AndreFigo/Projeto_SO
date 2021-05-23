@@ -52,7 +52,7 @@
 #define PIPE_NAME "my_pipe"
 #define LOGFILE "log.txt"
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* ======================================== ESTRUTURAS ======================================== */
 

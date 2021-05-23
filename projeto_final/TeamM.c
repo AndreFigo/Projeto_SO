@@ -9,7 +9,6 @@ void Team_manager(int num)
 {
 
     ignore_signals();
-    
 
     for (int i = 0; i < data->n_teams; ++i)
     {
@@ -48,8 +47,6 @@ void Team_manager(int num)
     }
 
     sem_wait(start_race);
-    
-
 
     //box
     //repair car
@@ -102,6 +99,8 @@ void Team_manager(int num)
 
             print_debug("BOX just passed another second\n");
             pthread_mutex_lock(&data->end_tunit_mutex);
+
+            (cars + ind_car)->time_passed = elapsed;
             data->cars_ended_tunit += 1;
             pthread_cond_signal(&data->end_tunit);
 

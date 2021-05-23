@@ -84,7 +84,15 @@ void Race_manager(int n_equipas)
         {
             if (FD_ISSET(fd_named_pipe, &read_set))
             {
-                nread = read(fd_named_pipe, line, MAXTAMLINE);
+                do
+                {
+
+                    nread = read(fd_named_pipe, line, MAXTAMLINE);
+                    if (nread < 0)
+                    {
+                        app_log("ERROR WHILE READING FROM PIPE\n");
+                    }
+                } while (nread < 0);
                 line[nread - 1] = 0;
 
                 char *token = strtok(line, "\n");
@@ -148,7 +156,7 @@ void Race_manager(int n_equipas)
                         if (nread == -1)
                         {
                             //error
-                            app_log("Unable to read from pipe.\n");
+                            app_log("UNABLE TO READ FROM PIPE\n");
                         }
                     } while (nread < 0);
 
@@ -212,10 +220,10 @@ void Race_manager(int n_equipas)
 
 void print_status_changes(int ind, int last, int current)
 {
-    char estados[5][20] = {"CORRIDA", "SEGURANCA", "BOX", "DESISTENCIA", "TERMINADO"};
+    char estados[5][20] = {"RACE", "SECURITY", "BOX", "ABANDONMENT", "TERMINATED"};
 
     char msg[200];
-    sprintf(msg, "CARRO %d PASSOU DO MODO %s PARA O MODO %s\n", (cars + ind)->num, estados[last], estados[current]);
+    sprintf(msg, "CAR %d CHANGED FROM %s TO %s MODE\n", (cars + ind)->num, estados[last], estados[current]);
 
     app_log(msg);
 }
@@ -242,6 +250,11 @@ void read_commands()
             break;
 
         nread = read(fd_named_pipe, line_input, MAXTAMLINE);
+        if (nread < 0)
+        {
+            app_log("ERROR: FAILED TO READ FROM PIPE\n");
+            continue;
+        }
 
         line_input[nread - 1] = 0;
 

@@ -86,7 +86,7 @@ void Malfunction_manager(int t_avaria)
                         {
                             msgsnd(mqid, &message, sizeof(message) - sizeof(long), 0);
                             data->n_malfuncs++;
-                            sprintf(warning, "MALFUNCTION DETECTED in car number %d\n", (cars + i)->num);
+                            sprintf(warning, "MALFUNCTION DETECTED IN CAR NUMBER %d\n", (cars + i)->num);
                             app_log(warning);
                         }
                     }
